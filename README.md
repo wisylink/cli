@@ -1,5 +1,7 @@
 # WisyLink CLI
 
+[![npm version](https://img.shields.io/npm/v/@wisylink/cli.svg)](https://www.npmjs.com/package/@wisylink/cli) [![npm downloads](https://img.shields.io/npm/dm/@wisylink/cli.svg)](https://www.npmjs.com/package/@wisylink/cli) [![license](https://img.shields.io/npm/l/@wisylink/cli.svg)](https://www.npmjs.com/package/@wisylink/cli)
+
 Official CLI contract for WisyLink API operations.
 
 Built with ❤️ by our team
