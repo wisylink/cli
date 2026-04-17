@@ -1,0 +1,48 @@
+{
+  "name": "@wisylink/cli",
+  "version": "0.1.0",
+  "description": "Official WisyLink CLI and Node client for files and links API operations.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "wisylink": "./bin/wisylink.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "index.js",
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "wisylink",
+    "cli",
+    "api",
+    "automation",
+    "ai"
+  ],
+  "author": "WisyLink",
+  "license": "MIT",
+  "homepage": "https://wisylink.com/docs/npm",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wisylink/cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wisylink/cli/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
