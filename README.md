@@ -1,6 +1,7 @@
 # WisyLink CLI
 
 Official WisyLink command-line interface and Node client for API-driven file and link operations.
+
 Built with ❤️ by our team
 
 ## Install
