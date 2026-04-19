@@ -33,6 +33,7 @@ export const ContentTypeByExtension = {
 
 export const SupportedFileExtensions = [
   "jpeg",
+  "jpg",
   "png",
   "mp3",
   "mp4",
