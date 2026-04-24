@@ -205,7 +205,7 @@ Success output:
 (wisylink links get <id>)
 
 Maps to `GET /links/:id`.
-Response includes `type`, `prompt`, `hosted`, `private`, `status`, `outputs`, `file_ids`, timestamps, and `shared_url`.
+Response includes `type`, `prompt`, `hosted`, `private`, `status`, `meta` (`title`, `description`, `cover`, `duration`), `outputs`, `file_ids`, timestamps, and `shared_url`. `meta` is present only when `status` is `completed`; `meta.duration` is included only for `audio` and `video` types.
 
 Example:
 
