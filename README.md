@@ -45,7 +45,7 @@ wisylink links get 67e6f6e6c5a91e4d2d9b0a77 --api-key "your_api_key"
 | Link id format | 24-char hex |
 | Max file_ids per link request | `10` |
 | Prompt max length | `5000` chars |
-| Link statuses | `pending`, `generating`, `completed`, `error` |
+| Link statuses | `pending`, `generating`, `completed` |
 
 ## Commands
 
