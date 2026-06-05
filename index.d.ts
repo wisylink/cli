@@ -20,12 +20,22 @@ export interface ChatInput {
   linkId?: string;
 }
 
+export interface ChatResult {
+  id: string;
+  shared_url: string;
+  status: "pending" | "generating" | "completed";
+  /** Wisy's brief acknowledgment of the request. null if unavailable. */
+  answer: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
 export interface WisyLinkClient {
   uploadFile(filePath: string): Promise<Record<string, unknown>>;
   getFile(fileId: string): Promise<Record<string, unknown>>;
   deleteFile(fileId: string): Promise<Record<string, unknown>>;
   /** Create or continue a link via conversation (POST /links) */
-  chat(input: ChatInput): Promise<Record<string, unknown>>;
+  chat(input: ChatInput): Promise<ChatResult>;
   getLink(linkId: string): Promise<Record<string, unknown>>;
   deleteLink(linkId: string): Promise<Record<string, unknown>>;
 }
