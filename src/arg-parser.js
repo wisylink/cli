@@ -190,40 +190,27 @@ function _parseFilesCommand(tokens) {
 function _parseLinksCommand(tokens) {
   const action = tokens[0];
   if (!action) {
-    throw _usageError("links command requires an action: create, get, update, delete.");
+    throw _usageError("links command requires an action: chat, get, delete.");
   }
 
-  if (action === "create") {
+  if (action === "chat") {
     const parsed = _parseFlags(tokens.slice(1), {
-      type: { repeatable: false },
       prompt: { repeatable: false },
-      hosted: { repeatable: false },
-      private: { repeatable: false },
       "file-id": { repeatable: true },
+      "link-id": { repeatable: false },
     });
 
-    if (parsed.positionals.length !== 0) {
-      throw _usageError(
-        "Usage: wisylink links create --type <type> --prompt <prompt> [--hosted true|false] [--private true|false] [--file-id <id> ...]"
-      );
-    }
-
-    if (!parsed.values.type) {
-      throw _usageError("--type is required.");
-    }
     if (!parsed.values.prompt) {
-      throw _usageError("--prompt is required.");
+      throw _usageError("Usage: wisylink links chat --prompt <text> [--file-id <id>...] [--link-id <id>]");
     }
 
     return {
       kind: "command",
-      name: "links.create",
+      name: "links.chat",
       args: {
-        type: parsed.values.type,
         prompt: parsed.values.prompt,
-        hosted: parsed.values.hosted,
-        private: parsed.values.private,
         fileIds: parsed.values["file-id"] || [],
+        linkId: parsed.values["link-id"],
       },
     };
   }
@@ -238,45 +225,6 @@ function _parseLinksCommand(tokens) {
       name: "links.get",
       args: {
         id: parsed.positionals[0],
-      },
-    };
-  }
-
-  if (action === "update") {
-    const parsed = _parseFlags(tokens.slice(1), {
-      prompt: { repeatable: false },
-      hosted: { repeatable: false },
-      private: { repeatable: false },
-      "file-id": { repeatable: true },
-    });
-
-    if (parsed.positionals.length !== 1) {
-      throw _usageError(
-        "Usage: wisylink links update <id> [--prompt <prompt>] [--hosted true|false] [--private true|false] [--file-id <id> ...]"
-      );
-    }
-
-    const hasAtLeastOneFlag =
-      parsed.values.prompt !== undefined ||
-      parsed.values.hosted !== undefined ||
-      parsed.values.private !== undefined ||
-      parsed.values["file-id"] !== undefined;
-
-    if (!hasAtLeastOneFlag) {
-      throw _usageError(
-        "links update requires at least one field: --prompt, --hosted, --private, or --file-id."
-      );
-    }
-
-    return {
-      kind: "command",
-      name: "links.update",
-      args: {
-        id: parsed.positionals[0],
-        prompt: parsed.values.prompt,
-        hosted: parsed.values.hosted,
-        private: parsed.values.private,
-        fileIds: parsed.values["file-id"],
       },
     };
   }

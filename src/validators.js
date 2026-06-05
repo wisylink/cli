@@ -2,7 +2,6 @@ import {
   DefaultApiUrl,
   DefaultTimeoutMs,
   IdentifierRegex,
-  LinkTypeSet,
   MaxFileIdsPerRequest,
   MaxPromptLength,
   MaxTimeoutMs,
@@ -106,13 +105,6 @@ export function AssertIdentifier(value, label = "id") {
   return normalized;
 }
 
-export function AssertLinkType(value) {
-  const type = _asString(value).trim().toLowerCase().replace(/-/g, "_");
-  if (!LinkTypeSet.has(type)) {
-    throw _usageError("type must be one of: image, audio, video, pdf, page.");
-  }
-  return type;
-}
 
 export function NormalizePrompt(value, options = {}) {
   const { optional = false } = options;

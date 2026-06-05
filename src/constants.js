@@ -6,15 +6,6 @@ export const MaxPromptLength = 5000;
 export const MaxFileIdsPerRequest = 10;
 export const IdentifierRegex = /^[a-f0-9]{24}$/;
 
-export const LinkTypeValues = [
-  "image",
-  "audio",
-  "video",
-  "pdf",
-  "page",
-];
-
-export const LinkTypeSet = new Set(LinkTypeValues);
 
 export const ContentTypeByExtension = {
   jpeg: "image/jpeg",
