@@ -238,7 +238,7 @@ export function CreateApiClient(options = {}) {
       });
     },
 
-    async CreateLink(payload) {
+    async Chat(payload) {
       return _requestJson({
         method: "POST",
         url: _joinApiUrl(apiUrl, "/links"),
@@ -256,20 +256,6 @@ export function CreateApiClient(options = {}) {
       return _requestJson({
         method: "GET",
         url: _joinApiUrl(apiUrl, `/links/${linkId}`),
-        apiKey,
-        userAgent,
-        timeoutMs,
-      });
-    },
-
-    async UpdateLink(linkId, payload) {
-      return _requestJson({
-        method: "PATCH",
-        url: _joinApiUrl(apiUrl, `/links/${linkId}`),
-        body: JSON.stringify(payload),
-        headers: {
-          "content-type": "application/json",
-        },
         apiKey,
         userAgent,
         timeoutMs,
