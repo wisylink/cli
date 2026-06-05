@@ -4,10 +4,8 @@ import { CliError } from "./runtime-error.js";
 import {
   AssertApiKey,
   AssertIdentifier,
-  AssertLinkType,
   NormalizeFileIds,
   NormalizePrompt,
-  ParseBooleanValue,
   ResolveFixedApiUrl,
 } from "./validators.js";
 
@@ -18,7 +16,6 @@ function _asObject(value) {
 function _resolveClientOptions(options = {}) {
   const apiKey = AssertApiKey(options.apiKey ?? process.env.WISYLINK_API_KEY);
   const apiUrl = ResolveFixedApiUrl(options.apiUrl);
-
   return {
     apiKey,
     apiUrl,
@@ -27,55 +24,36 @@ function _resolveClientOptions(options = {}) {
   };
 }
 
-function _buildCreatePayload(input) {
+function _buildChatPayload(input) {
   const data = _asObject(input);
-  const payload = {
-    type: AssertLinkType(data.type),
-    prompt: NormalizePrompt(data.prompt),
-  };
 
-  if (data.hosted !== undefined) {
-    payload.hosted = ParseBooleanValue(data.hosted, "hosted");
+  // Accept messages[] or shorthand prompt (auto-wraps to single user message)
+  let messages;
+  if (Array.isArray(data.messages) && data.messages.length) {
+    messages = data.messages.map((m) => ({
+      role: String(m?.role || "user"),
+      content: String(m?.content || "").trim(),
+    })).filter((m) => m.content);
+    if (!messages.length) {
+      throw new CliError({
+        code: "usage_error",
+        message: "messages must contain at least one non-empty entry.",
+        exitCode: 2,
+      });
+    }
+  } else {
+    const prompt = NormalizePrompt(data.prompt);
+    messages = [{ role: "user", content: prompt }];
   }
-  if (data.private !== undefined) {
-    payload.private = ParseBooleanValue(data.private, "private");
-  }
+
+  const payload = { messages };
 
   const fileIds = NormalizeFileIds(data.fileIds);
-  if (fileIds.length) {
-    payload.file_ids = fileIds;
-  }
+  if (fileIds.length) payload.file_ids = fileIds;
 
-  return payload;
-}
-
-function _buildUpdatePayload(input) {
-  const data = _asObject(input);
-  const payload = {};
-
-  if (Object.prototype.hasOwnProperty.call(data, "prompt")) {
-    payload.prompt = NormalizePrompt(data.prompt, { optional: true });
-  }
-  if (Object.prototype.hasOwnProperty.call(data, "hosted")) {
-    payload.hosted = ParseBooleanValue(data.hosted, "hosted");
-  }
-  if (Object.prototype.hasOwnProperty.call(data, "private")) {
-    payload.private = ParseBooleanValue(data.private, "private");
-  }
-  if (Object.prototype.hasOwnProperty.call(data, "fileIds")) {
-    payload.file_ids = NormalizeFileIds(data.fileIds);
-  }
-
-  const hasAnyField = Object.values(payload).some(
-    (fieldValue) => fieldValue !== undefined
-  );
-  if (!hasAnyField) {
-    throw new CliError({
-      code: "usage_error",
-      message:
-        "At least one update field is required: prompt, hosted, private, or fileIds.",
-      exitCode: 2,
-    });
+  // Optional: `id` in body = continue an existing link
+  if (data.linkId) {
+    payload.id = AssertIdentifier(data.linkId, "link id");
   }
 
   return payload;
@@ -100,20 +78,16 @@ export function CreateWisyLinkClient(options = {}) {
       return apiClient.DeleteFile(id);
     },
 
-    async createLink(input) {
-      const payload = _buildCreatePayload(input);
-      return apiClient.CreateLink(payload);
+    // chat: create a new link or continue an existing one via conversation.
+    // input: { prompt, fileIds? } or { messages, fileIds?, linkId? }
+    async chat(input) {
+      const payload = _buildChatPayload(input);
+      return apiClient.Chat(payload);
     },
 
     async getLink(linkId) {
       const id = AssertIdentifier(linkId, "link id");
       return apiClient.GetLink(id);
-    },
-
-    async updateLink(linkId, input) {
-      const id = AssertIdentifier(linkId, "link id");
-      const payload = _buildUpdatePayload(input);
-      return apiClient.UpdateLink(id, payload);
     },
 
     async deleteLink(linkId) {
