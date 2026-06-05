@@ -24,8 +24,7 @@ export interface ChatResult {
   id: string;
   shared_url: string;
   status: "pending" | "generating" | "completed";
-  /** Wisy's brief acknowledgment of the request. null if unavailable. */
-  answer: string | null;
+  answer: string;
   created_at: number;
   updated_at: number;
 }
