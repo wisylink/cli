@@ -181,7 +181,7 @@ Success output:
 ```json
 {
   "id": "67e6f6e6c5a91e4d2d9b0a77",
-  "page_url": "https://wisylink.com/67e6f6e6c5a91e4d2d9b0a77",
+  "url": "https://wisylink.com/67e6f6e6c5a91e4d2d9b0a77",
   "streaming": true,
   "ready": false,
   "answer": "On it — building your coffee shop landing page now.",
@@ -190,13 +190,13 @@ Success output:
 }
 ```
 
-`answer` is Wisy's short reply. `streaming: true` means the page is still building; poll `links get` until `ready: true`.
+`answer` is Wisy's short reply. `streaming: true` means the page is still building; the hosted `url` goes live once the build finishes.
 
 #### Get Link
 
 (wisylink links get <id>)
 
-Maps to `GET /links/:id`. Response includes `id`, `page_url`, `cover_url`, `streaming`, `ready`, `private`, `meta` (`title`, `description`), and timestamps. The page is live at `page_url` once `ready` is `true`.
+Maps to `GET /links/:id`. Response includes `id`, `url` (the hosted page), `meta` (`title`, `description`), `file_ids`, and timestamps.
 
 Example:
 
