@@ -4,16 +4,9 @@ export interface ClientOptions {
   userAgent?: string;
 }
 
-export interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
 export interface ChatInput {
-  /** Shorthand: auto-wrapped as a single user message */
+  /** The message to send to Wisy */
   prompt?: string;
-  /** Full conversation history */
-  messages?: ChatMessage[];
   /** Reference files to attach */
   fileIds?: string[];
   /** Continue an existing link (optional) */
@@ -22,8 +15,9 @@ export interface ChatInput {
 
 export interface ChatResult {
   id: string;
-  shared_url: string;
-  status: "pending" | "generating" | "completed";
+  page_url: string;
+  streaming: boolean;
+  ready: boolean;
   answer: string;
   created_at: number;
   updated_at: number;
