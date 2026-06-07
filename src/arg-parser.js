@@ -195,20 +195,20 @@ function _parseLinksCommand(tokens) {
 
   if (action === "chat") {
     const parsed = _parseFlags(tokens.slice(1), {
-      prompt: { repeatable: false },
+      message: { repeatable: false },
       "file-id": { repeatable: true },
       "link-id": { repeatable: false },
     });
 
-    if (!parsed.values.prompt) {
-      throw _usageError("Usage: wisylink links chat --prompt <text> [--file-id <id>...] [--link-id <id>]");
+    if (!parsed.values.message) {
+      throw _usageError("Usage: wisylink links chat --message <text> [--file-id <id>...] [--link-id <id>]");
     }
 
     return {
       kind: "command",
       name: "links.chat",
       args: {
-        prompt: parsed.values.prompt,
+        message: parsed.values.message,
         fileIds: parsed.values["file-id"] || [],
         linkId: parsed.values["link-id"],
       },

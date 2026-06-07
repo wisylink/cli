@@ -28,7 +28,7 @@ function _renderHelp() {
     "  files upload <path>",
     "  files get <id>",
     "  files delete <id>",
-    "  links chat --prompt <text> [--file-id <id>...] [--link-id <id>]",
+    "  links chat --message <text> [--file-id <id>...] [--link-id <id>]",
     "  links get <id>",
     "  links delete <id>",
     "",
