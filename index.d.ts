@@ -16,8 +16,6 @@ export interface ChatInput {
 export interface ChatResult {
   id: string;
   url: string;
-  streaming: boolean;
-  ready: boolean;
   answer: string;
   created_at: number;
   updated_at: number;
