@@ -3,7 +3,7 @@ import {
   DefaultTimeoutMs,
   IdentifierRegex,
   MaxFileIdsPerRequest,
-  MaxPromptLength,
+  MaxMessageLength,
   MaxTimeoutMs,
   MinTimeoutMs,
 } from "./constants.js";
@@ -106,39 +106,20 @@ export function AssertIdentifier(value, label = "id") {
 }
 
 
-export function NormalizePrompt(value, options = {}) {
-  const { optional = false } = options;
+export function NormalizeMessage(value) {
   if (value === undefined || value === null) {
-    if (optional) return undefined;
-    throw _usageError("prompt is required.");
+    throw _usageError("message is required.");
   }
 
-  const prompt = _asString(value).trim();
-  if (!prompt) {
-    throw _usageError(
-      optional
-        ? "prompt cannot be empty when provided."
-        : "prompt is required.",
-    );
+  const message = _asString(value).trim();
+  if (!message) {
+    throw _usageError("message is required.");
   }
-  if (prompt.length > MaxPromptLength) {
-    throw _usageError(`prompt is too long (max ${MaxPromptLength} chars).`);
+  if (message.length > MaxMessageLength) {
+    throw _usageError(`message is too long (max ${MaxMessageLength} chars).`);
   }
 
-  return prompt;
-}
-
-export function ParseBooleanValue(value, label = "value") {
-  if (typeof value === "boolean") return value;
-
-  const raw = _asString(value).trim().toLowerCase();
-  if (!raw) {
-    throw _usageError(`${label} must be true or false.`);
-  }
-
-  if (["true", "1", "yes", "y"].includes(raw)) return true;
-  if (["false", "0", "no", "n"].includes(raw)) return false;
-  throw _usageError(`${label} must be true or false.`);
+  return message;
 }
 
 export function NormalizeFileIds(values, options = {}) {

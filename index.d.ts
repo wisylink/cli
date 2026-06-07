@@ -4,16 +4,9 @@ export interface ClientOptions {
   userAgent?: string;
 }
 
-export interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
 export interface ChatInput {
-  /** Shorthand: auto-wrapped as a single user message */
-  prompt?: string;
-  /** Full conversation history */
-  messages?: ChatMessage[];
+  /** The message to send to Wisy */
+  message?: string;
   /** Reference files to attach */
   fileIds?: string[];
   /** Continue an existing link (optional) */
@@ -22,8 +15,7 @@ export interface ChatInput {
 
 export interface ChatResult {
   id: string;
-  shared_url: string;
-  status: "pending" | "generating" | "completed";
+  url: string;
   answer: string;
   created_at: number;
   updated_at: number;
@@ -43,6 +35,5 @@ export declare function CreateWisyLinkClient(options?: ClientOptions): WisyLinkC
 
 export declare const DefaultApiUrl: string;
 export declare const DefaultTimeoutMs: number;
-export declare const MaxPromptLength: number;
 export declare const MaxFileIdsPerRequest: number;
 export declare const SupportedFileExtensions: string[];

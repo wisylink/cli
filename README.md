@@ -44,8 +44,7 @@ wisylink links get 67e6f6e6c5a91e4d2d9b0a77 --api-key "your_api_key"
 | File id format | 24-char hex |
 | Link id format | 24-char hex |
 | Max file_ids per link request | `10` |
-| Prompt max length | `5000` chars |
-| Link statuses | `pending`, `generating`, `completed` |
+| Message max length | `5000` chars |
 
 ## Commands
 
@@ -140,52 +139,40 @@ Success output:
 
 ### Links
 
-Create, read, update, and delete links backed by the WisyLink API.
+Every link is a hosted page built from a message. Create or continue a link via chat, then read or delete it.
 
-#### Create Link
+#### Chat
 
-(wisylink links create --type <type> --prompt <prompt>)
+(wisylink links chat --message <text> [--file-id <id>...] [--link-id <id>])
 
-Maps to `POST /links`.
-
-Rules:
-- Endpoint prefix (Linkbase) must be configured before link creation.
-- New links are created with `status: pending`.
+Maps to `POST /links`. Describe what you want and Wisy builds it into a hosted page. Omit `--link-id` to start a new link; pass it to continue an existing one — conversation history is kept server-side per link.
 
 Arguments:
 
 | Flag | Type | Required | Rules |
 | --- | --- | --- | --- |
-| `--type` | `string` | Yes | `image`, `audio`, `video`, `pdf`, `page` |
-| `--prompt` | `string` | Yes | 1..5000 chars |
-| `--hosted` | `boolean` | No | Defaults to `false` |
-| `--private` | `boolean` | No | Defaults to `false` |
+| `--message` | `string` | Yes | 1..5000 chars |
 | `--file-id` | `string` | No | Repeatable flag, max 10 total |
+| `--link-id` | `string` | No | 24-char hex; continue an existing link |
 
 Example:
 
 ```bash
-wisylink links create \
-  --type "video" \
-  --prompt "Create a short product trailer with energetic pacing." \
-  --hosted true \
-  --private true \
-  --file-id 67e6f6e6c5a91e4d2d9b0a11 \
-  --file-id 67e6f6e6c5a91e4d2d9b0a22
+wisylink links chat \
+  --message "Build a landing page for a specialty coffee shop called Ember." \
+  --file-id 67e6f6e6c5a91e4d2d9b0a11
 ```
 
 ```js
 import { CreateWisyLinkClient } from "@wisylink/cli";
 
 const client = CreateWisyLinkClient({ apiKey: "<api-key>" });
-const link = await client.createLink({
-  type: "video",
-  prompt: "Create a short product trailer with energetic pacing.",
-  hosted: true,
-  private: true,
-  fileIds: ["<file-id-1>", "<file-id-2>"],
+const result = await client.chat({
+  message: "Build a landing page for a specialty coffee shop called Ember.",
+  fileIds: ["<file-id>"],
+  // linkId: "<link-id>",   // continue an existing link
 });
-console.log(link);
+console.log(result);
 ```
 
 Success output:
@@ -193,19 +180,20 @@ Success output:
 ```json
 {
   "id": "67e6f6e6c5a91e4d2d9b0a77",
-  "shared_url": "https://your-endpoint.wisylink.com/67e6f6e6c5a91e4d2d9b0a77",
-  "status": "pending",
+  "url": "https://wisylink.com/67e6f6e6c5a91e4d2d9b0a77",
+  "answer": "On it — building your coffee shop landing page now.",
   "created_at": 1762432496000,
   "updated_at": 1762432496000
 }
 ```
 
+`answer` is Wisy's short reply; the hosted `url` goes live once the build finishes.
+
 #### Get Link
 
 (wisylink links get <id>)
 
-Maps to `GET /links/:id`.
-Response includes `type`, `prompt`, `hosted`, `private`, `status`, `meta` (`title`, `description`, `cover`, `duration`), `outputs`, `file_ids`, timestamps, and `shared_url`. `meta` is present only when `status` is `completed`; `meta.duration` is included only for `audio` and `video` types.
+Maps to `GET /links/:id`. Response includes `id`, `url` (the hosted page), `meta` (`title`, `description`), `file_ids`, and timestamps.
 
 Example:
 
@@ -218,51 +206,6 @@ import { CreateWisyLinkClient } from "@wisylink/cli";
 
 const client = CreateWisyLinkClient({ apiKey: "<api-key>" });
 const link = await client.getLink("<link-id>");
-console.log(link);
-```
-
-#### Update Link
-
-(wisylink links update <id>)
-
-Maps to `PATCH /links/:id`.
-
-Arguments:
-
-| Flag | Type | Required | Rules |
-| --- | --- | --- | --- |
-| `--prompt` | `string` | No | 1..5000 chars |
-| `--hosted` | `boolean` | No | `true` / `false` |
-| `--private` | `boolean` | No | `true` / `false` |
-| `--file-id` | `string` | No | Repeatable flag, full replacement when sent |
-
-Rules:
-- Provide at least one updatable flag.
-- Endpoint prefix (Linkbase) must be configured before link update.
-- If `--file-id` is sent, it replaces the full attachment set.
-- To keep existing attachments, include them again in the same update command.
-- Hosted links cost 1 credit/day; hosted + private links cost 2 credits/day.
-
-Example:
-
-```bash
-wisylink links update 67e6f6e6c5a91e4d2d9b0a77 \
-  --prompt "Create a 20-second trailer, emphasize motion graphics." \
-  --hosted false \
-  --private true \
-  --file-id 67e6f6e6c5a91e4d2d9b0a22
-```
-
-```js
-import { CreateWisyLinkClient } from "@wisylink/cli";
-
-const client = CreateWisyLinkClient({ apiKey: "<api-key>" });
-const link = await client.updateLink("<link-id>", {
-  prompt: "Create a 20-second trailer, emphasize motion graphics.",
-  hosted: false,
-  private: true,
-  fileIds: ["<file-id>"],
-});
 console.log(link);
 ```
 

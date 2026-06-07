@@ -1,11 +1,10 @@
 import { DefaultTimeoutMs } from "./constants.js";
 import { CreateApiClient } from "./http-client.js";
-import { CliError } from "./runtime-error.js";
 import {
   AssertApiKey,
   AssertIdentifier,
   NormalizeFileIds,
-  NormalizePrompt,
+  NormalizeMessage,
   ResolveFixedApiUrl,
 } from "./validators.js";
 
@@ -27,26 +26,7 @@ function _resolveClientOptions(options = {}) {
 function _buildChatPayload(input) {
   const data = _asObject(input);
 
-  // Accept messages[] or shorthand prompt (auto-wraps to single user message)
-  let messages;
-  if (Array.isArray(data.messages) && data.messages.length) {
-    messages = data.messages.map((m) => ({
-      role: String(m?.role || "user"),
-      content: String(m?.content || "").trim(),
-    })).filter((m) => m.content);
-    if (!messages.length) {
-      throw new CliError({
-        code: "usage_error",
-        message: "messages must contain at least one non-empty entry.",
-        exitCode: 2,
-      });
-    }
-  } else {
-    const prompt = NormalizePrompt(data.prompt);
-    messages = [{ role: "user", content: prompt }];
-  }
-
-  const payload = { messages };
+  const payload = { message: NormalizeMessage(data.message) };
 
   const fileIds = NormalizeFileIds(data.fileIds);
   if (fileIds.length) payload.file_ids = fileIds;
@@ -78,8 +58,8 @@ export function CreateWisyLinkClient(options = {}) {
       return apiClient.DeleteFile(id);
     },
 
-    // chat: create a new link or continue an existing one via conversation.
-    // input: { prompt, fileIds? } or { messages, fileIds?, linkId? }
+    // chat: create a new link or continue an existing one from a message.
+    // input: { message, fileIds?, linkId? }
     async chat(input) {
       const payload = _buildChatPayload(input);
       return apiClient.Chat(payload);

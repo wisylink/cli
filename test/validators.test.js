@@ -2,11 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   AssertIdentifier,
-  AssertLinkType,
   NormalizeFileIds,
   NormalizeApiUrl,
-  NormalizePrompt,
-  ParseBooleanValue,
+  NormalizeMessage,
   ParseTimeoutMs,
   ResolveFixedApiUrl,
 } from "../src/validators.js";
@@ -20,20 +18,8 @@ test("AssertIdentifier rejects invalid id", () => {
   assert.throws(() => AssertIdentifier("bad-id", "id"), /24-character hex/);
 });
 
-test("AssertLinkType normalizes dash format", () => {
-  const value = AssertLinkType("page");
-  assert.equal(value, "page");
-});
-
-test("NormalizePrompt validates max length", () => {
-  assert.throws(() => NormalizePrompt(" ".repeat(2)), /prompt is required/);
-});
-
-test("ParseBooleanValue parses true and false", () => {
-  assert.equal(ParseBooleanValue("true", "hosted"), true);
-  assert.equal(ParseBooleanValue("false", "hosted"), false);
-  assert.equal(ParseBooleanValue("true", "private"), true);
-  assert.equal(ParseBooleanValue("false", "private"), false);
+test("NormalizeMessage validates max length", () => {
+  assert.throws(() => NormalizeMessage(" ".repeat(2)), /message is required/);
 });
 
 test("NormalizeFileIds de-duplicates", () => {
