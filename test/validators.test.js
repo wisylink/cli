@@ -4,7 +4,7 @@ import {
   AssertIdentifier,
   NormalizeFileIds,
   NormalizeApiUrl,
-  NormalizePrompt,
+  NormalizeMessage,
   ParseTimeoutMs,
   ResolveFixedApiUrl,
 } from "../src/validators.js";
@@ -18,8 +18,8 @@ test("AssertIdentifier rejects invalid id", () => {
   assert.throws(() => AssertIdentifier("bad-id", "id"), /24-character hex/);
 });
 
-test("NormalizePrompt validates max length", () => {
-  assert.throws(() => NormalizePrompt(" ".repeat(2)), /prompt is required/);
+test("NormalizeMessage validates max length", () => {
+  assert.throws(() => NormalizeMessage(" ".repeat(2)), /message is required/);
 });
 
 test("NormalizeFileIds de-duplicates", () => {

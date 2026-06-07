@@ -4,7 +4,7 @@ import {
   AssertApiKey,
   AssertIdentifier,
   NormalizeFileIds,
-  NormalizePrompt,
+  NormalizeMessage,
   ResolveFixedApiUrl,
 } from "./validators.js";
 
@@ -26,7 +26,7 @@ function _resolveClientOptions(options = {}) {
 function _buildChatPayload(input) {
   const data = _asObject(input);
 
-  const payload = { message: NormalizePrompt(data.prompt) };
+  const payload = { message: NormalizeMessage(data.message) };
 
   const fileIds = NormalizeFileIds(data.fileIds);
   if (fileIds.length) payload.file_ids = fileIds;
@@ -58,8 +58,8 @@ export function CreateWisyLinkClient(options = {}) {
       return apiClient.DeleteFile(id);
     },
 
-    // chat: create a new link or continue an existing one from a prompt.
-    // input: { prompt, fileIds?, linkId? }
+    // chat: create a new link or continue an existing one from a message.
+    // input: { message, fileIds?, linkId? }
     async chat(input) {
       const payload = _buildChatPayload(input);
       return apiClient.Chat(payload);

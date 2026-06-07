@@ -6,7 +6,7 @@ test("ParseCliArgs should parse links chat with repeatable file-id and link-id",
   const parsed = ParseCliArgs([
     "links",
     "chat",
-    "--prompt",
+    "--message",
     "hello",
     "--link-id",
     "67e6f6e6c5a91e4d2d9b0a77",
@@ -18,7 +18,7 @@ test("ParseCliArgs should parse links chat with repeatable file-id and link-id",
 
   assert.equal(parsed.kind, "command");
   assert.equal(parsed.name, "links.chat");
-  assert.equal(parsed.args.prompt, "hello");
+  assert.equal(parsed.args.message, "hello");
   assert.equal(parsed.args.linkId, "67e6f6e6c5a91e4d2d9b0a77");
   assert.equal(parsed.args.fileIds.length, 2);
 });
@@ -45,7 +45,7 @@ test("ParseCliArgs should reject unknown flags", () => {
       ParseCliArgs([
         "links",
         "chat",
-        "--prompt",
+        "--message",
         "hi",
         "--unknown",
         "value",
