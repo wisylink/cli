@@ -3,7 +3,7 @@ import {
   DefaultTimeoutMs,
   IdentifierRegex,
   MaxFileIdsPerRequest,
-  MaxPromptLength,
+  MaxMessageLength,
   MaxTimeoutMs,
   MinTimeoutMs,
 } from "./constants.js";
@@ -106,20 +106,20 @@ export function AssertIdentifier(value, label = "id") {
 }
 
 
-export function NormalizePrompt(value) {
+export function NormalizeMessage(value) {
   if (value === undefined || value === null) {
-    throw _usageError("prompt is required.");
+    throw _usageError("message is required.");
   }
 
-  const prompt = _asString(value).trim();
-  if (!prompt) {
-    throw _usageError("prompt is required.");
+  const message = _asString(value).trim();
+  if (!message) {
+    throw _usageError("message is required.");
   }
-  if (prompt.length > MaxPromptLength) {
-    throw _usageError(`prompt is too long (max ${MaxPromptLength} chars).`);
+  if (message.length > MaxMessageLength) {
+    throw _usageError(`message is too long (max ${MaxMessageLength} chars).`);
   }
 
-  return prompt;
+  return message;
 }
 
 export function NormalizeFileIds(values, options = {}) {

@@ -6,7 +6,7 @@ export interface ClientOptions {
 
 export interface ChatInput {
   /** The message to send to Wisy */
-  prompt?: string;
+  message?: string;
   /** Reference files to attach */
   fileIds?: string[];
   /** Continue an existing link (optional) */
@@ -37,6 +37,5 @@ export declare function CreateWisyLinkClient(options?: ClientOptions): WisyLinkC
 
 export declare const DefaultApiUrl: string;
 export declare const DefaultTimeoutMs: number;
-export declare const MaxPromptLength: number;
 export declare const MaxFileIdsPerRequest: number;
 export declare const SupportedFileExtensions: string[];

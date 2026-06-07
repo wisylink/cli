@@ -44,7 +44,7 @@ wisylink links get 67e6f6e6c5a91e4d2d9b0a77 --api-key "your_api_key"
 | File id format | 24-char hex |
 | Link id format | 24-char hex |
 | Max file_ids per link request | `10` |
-| Prompt max length | `5000` chars |
+| Message max length | `5000` chars |
 | Link lifecycle | `streaming` + `ready` booleans (no status enum) |
 
 ## Commands
@@ -140,11 +140,11 @@ Success output:
 
 ### Links
 
-Every link is a hosted page built from a prompt. Create or continue a link via chat, then read or delete it.
+Every link is a hosted page built from a message. Create or continue a link via chat, then read or delete it.
 
 #### Chat
 
-(wisylink links chat --prompt <text> [--file-id <id>...] [--link-id <id>])
+(wisylink links chat --message <text> [--file-id <id>...] [--link-id <id>])
 
 Maps to `POST /links`. Describe what you want and Wisy builds it into a hosted page. Omit `--link-id` to start a new link; pass it to continue an existing one — conversation history is kept server-side per link.
 
@@ -152,7 +152,7 @@ Arguments:
 
 | Flag | Type | Required | Rules |
 | --- | --- | --- | --- |
-| `--prompt` | `string` | Yes | 1..5000 chars |
+| `--message` | `string` | Yes | 1..5000 chars |
 | `--file-id` | `string` | No | Repeatable flag, max 10 total |
 | `--link-id` | `string` | No | 24-char hex; continue an existing link |
 
@@ -160,7 +160,7 @@ Example:
 
 ```bash
 wisylink links chat \
-  --prompt "Build a landing page for a specialty coffee shop called Ember." \
+  --message "Build a landing page for a specialty coffee shop called Ember." \
   --file-id 67e6f6e6c5a91e4d2d9b0a11
 ```
 
@@ -169,7 +169,7 @@ import { CreateWisyLinkClient } from "@wisylink/cli";
 
 const client = CreateWisyLinkClient({ apiKey: "<api-key>" });
 const result = await client.chat({
-  prompt: "Build a landing page for a specialty coffee shop called Ember.",
+  message: "Build a landing page for a specialty coffee shop called Ember.",
   fileIds: ["<file-id>"],
   // linkId: "<link-id>",   // continue an existing link
 });

@@ -11,7 +11,7 @@ function _buildClientOptions(command, version) {
 
 function _toChatInput(args) {
   const input = {};
-  if (args.prompt !== undefined)  input.prompt = args.prompt;
+  if (args.message !== undefined) input.message = args.message;
   if (args.fileIds !== undefined) input.fileIds = args.fileIds;
   if (args.linkId !== undefined)  input.linkId = args.linkId;
   return input;
