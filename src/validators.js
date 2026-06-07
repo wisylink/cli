@@ -106,39 +106,20 @@ export function AssertIdentifier(value, label = "id") {
 }
 
 
-export function NormalizePrompt(value, options = {}) {
-  const { optional = false } = options;
+export function NormalizePrompt(value) {
   if (value === undefined || value === null) {
-    if (optional) return undefined;
     throw _usageError("prompt is required.");
   }
 
   const prompt = _asString(value).trim();
   if (!prompt) {
-    throw _usageError(
-      optional
-        ? "prompt cannot be empty when provided."
-        : "prompt is required.",
-    );
+    throw _usageError("prompt is required.");
   }
   if (prompt.length > MaxPromptLength) {
     throw _usageError(`prompt is too long (max ${MaxPromptLength} chars).`);
   }
 
   return prompt;
-}
-
-export function ParseBooleanValue(value, label = "value") {
-  if (typeof value === "boolean") return value;
-
-  const raw = _asString(value).trim().toLowerCase();
-  if (!raw) {
-    throw _usageError(`${label} must be true or false.`);
-  }
-
-  if (["true", "1", "yes", "y"].includes(raw)) return true;
-  if (["false", "0", "no", "n"].includes(raw)) return false;
-  throw _usageError(`${label} must be true or false.`);
 }
 
 export function NormalizeFileIds(values, options = {}) {
