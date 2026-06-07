@@ -45,7 +45,6 @@ wisylink links get 67e6f6e6c5a91e4d2d9b0a77 --api-key "your_api_key"
 | Link id format | 24-char hex |
 | Max file_ids per link request | `10` |
 | Message max length | `5000` chars |
-| Link lifecycle | `streaming` + `ready` booleans (no status enum) |
 
 ## Commands
 
@@ -182,15 +181,13 @@ Success output:
 {
   "id": "67e6f6e6c5a91e4d2d9b0a77",
   "url": "https://wisylink.com/67e6f6e6c5a91e4d2d9b0a77",
-  "streaming": true,
-  "ready": false,
   "answer": "On it — building your coffee shop landing page now.",
   "created_at": 1762432496000,
   "updated_at": 1762432496000
 }
 ```
 
-`answer` is Wisy's short reply. `streaming: true` means the page is still building; the hosted `url` goes live once the build finishes.
+`answer` is Wisy's short reply; the hosted `url` goes live once the build finishes.
 
 #### Get Link
 
