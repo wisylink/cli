@@ -180,7 +180,7 @@ Success output:
 ```json
 {
   "id": "67e6f6e6c5a91e4d2d9b0a77",
-  "url": "https://wisylink.com/67e6f6e6c5a91e4d2d9b0a77",
+  "url": "https://67e6f6e6c5a91e4d2d9b0a77.wisylink.com",
   "answer": "On it — building your coffee shop landing page now.",
   "created_at": 1762432496000,
   "updated_at": 1762432496000
