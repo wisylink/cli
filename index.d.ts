@@ -16,6 +16,8 @@ export interface ChatInput {
 export interface ChatResult {
   id: string;
   url: string;
+  /** Link build status: building | completed | aborted | idle */
+  status: string;
   answer: string;
   created_at: number;
   updated_at: number;
