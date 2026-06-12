@@ -181,6 +181,7 @@ Success output:
 {
   "id": "67e6f6e6c5a91e4d2d9b0a77",
   "url": "https://67e6f6e6c5a91e4d2d9b0a77.wisylink.com",
+  "status": "building",
   "answer": "On it — building your coffee shop landing page now.",
   "created_at": 1762432496000,
   "updated_at": 1762432496000
@@ -193,7 +194,7 @@ Success output:
 
 (wisylink links get <id>)
 
-Maps to `GET /links/:id`. Response includes `id`, `url` (the hosted page), `meta` (`title`, `description`), `file_ids`, and timestamps.
+Maps to `GET /links/:id`. Response includes `id`, `url` (the hosted page), `status`, `meta` (`title`, `description`), `file_ids`, and timestamps.
 
 Example:
 
