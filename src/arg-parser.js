@@ -187,30 +187,50 @@ function _parseFilesCommand(tokens) {
   throw _usageError(`Unknown files action: ${action}`);
 }
 
+function _parseChatCommand(tokens) {
+  const parsed = _parseFlags(tokens, {
+    message: { repeatable: false },
+    "file-id": { repeatable: true },
+    "link-id": { repeatable: false },
+  });
+
+  if (!parsed.values.message) {
+    throw _usageError("Usage: wisylink chat --message <text> [--file-id <id>...] [--link-id <id>]");
+  }
+
+  return {
+    kind: "command",
+    name: "chat",
+    args: {
+      message: parsed.values.message,
+      fileIds: parsed.values["file-id"] || [],
+      linkId: parsed.values["link-id"],
+    },
+  };
+}
+
 function _parseLinksCommand(tokens) {
   const action = tokens[0];
   if (!action) {
-    throw _usageError("links command requires an action: chat, get, delete.");
+    throw _usageError("links command requires an action: list, get, delete.");
   }
 
-  if (action === "chat") {
+  if (action === "list") {
     const parsed = _parseFlags(tokens.slice(1), {
-      message: { repeatable: false },
-      "file-id": { repeatable: true },
-      "link-id": { repeatable: false },
+      page: { repeatable: false },
+      limit: { repeatable: false },
     });
 
-    if (!parsed.values.message) {
-      throw _usageError("Usage: wisylink links chat --message <text> [--file-id <id>...] [--link-id <id>]");
+    if (parsed.positionals.length) {
+      throw _usageError("Usage: wisylink links list [--page <n>] [--limit <n>]");
     }
 
     return {
       kind: "command",
-      name: "links.chat",
+      name: "links.list",
       args: {
-        message: parsed.values.message,
-        fileIds: parsed.values["file-id"] || [],
-        linkId: parsed.values["link-id"],
+        page: parsed.values.page,
+        limit: parsed.values.limit,
       },
     };
   }
@@ -282,6 +302,8 @@ export function ParseCliArgs(argv = []) {
   const command =
     group === "files"
       ? _parseFilesCommand(commandTokens)
+      : group === "chat"
+      ? _parseChatCommand(commandTokens)
       : group === "links"
       ? _parseLinksCommand(commandTokens)
       : null;

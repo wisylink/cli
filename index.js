@@ -3,5 +3,6 @@ export {
   DefaultApiUrl,
   DefaultTimeoutMs,
   MaxFileIdsPerRequest,
+  MaxListLimit,
   SupportedFileExtensions,
 } from "./src/constants.js";

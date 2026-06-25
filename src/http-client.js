@@ -241,11 +241,25 @@ export function CreateApiClient(options = {}) {
     async Chat(payload) {
       return _requestJson({
         method: "POST",
-        url: _joinApiUrl(apiUrl, "/links"),
+        url: _joinApiUrl(apiUrl, "/chat"),
         body: JSON.stringify(payload),
         headers: {
           "content-type": "application/json",
         },
+        apiKey,
+        userAgent,
+        timeoutMs,
+      });
+    },
+
+    async ListLinks(params = {}) {
+      const query = new URLSearchParams();
+      if (params.page !== undefined) query.set("page", String(params.page));
+      if (params.limit !== undefined) query.set("limit", String(params.limit));
+      const suffix = query.toString() ? `?${query.toString()}` : "";
+      return _requestJson({
+        method: "GET",
+        url: _joinApiUrl(apiUrl, `/links${suffix}`),
         apiKey,
         userAgent,
         timeoutMs,
