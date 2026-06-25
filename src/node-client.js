@@ -4,6 +4,8 @@ import {
   AssertApiKey,
   AssertIdentifier,
   NormalizeFileIds,
+  NormalizeListLimit,
+  NormalizeListPage,
   NormalizeMessage,
   ResolveFixedApiUrl,
 } from "./validators.js";
@@ -21,6 +23,16 @@ function _resolveClientOptions(options = {}) {
     timeoutMs: options.timeoutMs ?? DefaultTimeoutMs,
     userAgent: options.userAgent,
   };
+}
+
+function _buildListParams(input) {
+  const data = _asObject(input);
+  const params = {};
+  const page = NormalizeListPage(data.page);
+  if (page !== undefined) params.page = page;
+  const limit = NormalizeListLimit(data.limit);
+  if (limit !== undefined) params.limit = limit;
+  return params;
 }
 
 function _buildChatPayload(input) {
@@ -63,6 +75,13 @@ export function CreateWisyLinkClient(options = {}) {
     async chat(input) {
       const payload = _buildChatPayload(input);
       return apiClient.Chat(payload);
+    },
+
+    // listLinks: page through the caller's links, newest first.
+    // input: { page?, limit? }
+    async listLinks(input) {
+      const params = _buildListParams(input);
+      return apiClient.ListLinks(params);
     },
 
     async getLink(linkId) {

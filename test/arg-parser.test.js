@@ -2,9 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { ParseCliArgs } from "../src/arg-parser.js";
 
-test("ParseCliArgs should parse links chat with repeatable file-id and link-id", () => {
+test("ParseCliArgs should parse chat with repeatable file-id and link-id", () => {
   const parsed = ParseCliArgs([
-    "links",
     "chat",
     "--message",
     "hello",
@@ -17,10 +16,19 @@ test("ParseCliArgs should parse links chat with repeatable file-id and link-id",
   ]);
 
   assert.equal(parsed.kind, "command");
-  assert.equal(parsed.name, "links.chat");
+  assert.equal(parsed.name, "chat");
   assert.equal(parsed.args.message, "hello");
   assert.equal(parsed.args.linkId, "67e6f6e6c5a91e4d2d9b0a77");
   assert.equal(parsed.args.fileIds.length, 2);
+});
+
+test("ParseCliArgs should parse links list with page and limit", () => {
+  const parsed = ParseCliArgs(["links", "list", "--page", "2", "--limit", "50"]);
+
+  assert.equal(parsed.kind, "command");
+  assert.equal(parsed.name, "links.list");
+  assert.equal(parsed.args.page, "2");
+  assert.equal(parsed.args.limit, "50");
 });
 
 test("ParseCliArgs should parse global options", () => {
@@ -43,7 +51,6 @@ test("ParseCliArgs should reject unknown flags", () => {
   assert.throws(
     () =>
       ParseCliArgs([
-        "links",
         "chat",
         "--message",
         "hi",

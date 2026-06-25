@@ -24,7 +24,9 @@ export async function ExecuteCommand(command, version) {
   if (command.name === "files.get")     return client.getFile(command.args.id);
   if (command.name === "files.delete")  return client.deleteFile(command.args.id);
 
-  if (command.name === "links.chat")    return client.chat(_toChatInput(command.args));
+  if (command.name === "chat")          return client.chat(_toChatInput(command.args));
+
+  if (command.name === "links.list")    return client.listLinks(command.args);
   if (command.name === "links.get")     return client.getLink(command.args.id);
   if (command.name === "links.delete")  return client.deleteLink(command.args.id);
 

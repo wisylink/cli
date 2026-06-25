@@ -4,6 +4,8 @@ import {
   AssertIdentifier,
   NormalizeFileIds,
   NormalizeApiUrl,
+  NormalizeListLimit,
+  NormalizeListPage,
   NormalizeMessage,
   ParseTimeoutMs,
   ResolveFixedApiUrl,
@@ -51,5 +53,18 @@ test("ResolveFixedApiUrl should reject custom URL", () => {
     () => ResolveFixedApiUrl("https://example.com/api"),
     /API URL is fixed/
   );
+});
+
+test("NormalizeListLimit clamps are enforced", () => {
+  assert.equal(NormalizeListLimit(undefined), undefined);
+  assert.equal(NormalizeListLimit("50"), 50);
+  assert.throws(() => NormalizeListLimit("0"), /between 1 and 100/);
+  assert.throws(() => NormalizeListLimit("101"), /between 1 and 100/);
+});
+
+test("NormalizeListPage requires a positive integer", () => {
+  assert.equal(NormalizeListPage(undefined), undefined);
+  assert.equal(NormalizeListPage("3"), 3);
+  assert.throws(() => NormalizeListPage("0"), />= 1/);
 });
 

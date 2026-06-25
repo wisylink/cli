@@ -3,6 +3,7 @@ import {
   DefaultTimeoutMs,
   IdentifierRegex,
   MaxFileIdsPerRequest,
+  MaxListLimit,
   MaxMessageLength,
   MaxTimeoutMs,
   MinTimeoutMs,
@@ -120,6 +121,24 @@ export function NormalizeMessage(value) {
   }
 
   return message;
+}
+
+export function NormalizeListPage(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  const page = _toInteger(value);
+  if (!Number.isInteger(page) || page < 1) {
+    throw _usageError("--page must be an integer >= 1.");
+  }
+  return page;
+}
+
+export function NormalizeListLimit(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  const limit = _toInteger(value);
+  if (!Number.isInteger(limit) || limit < 1 || limit > MaxListLimit) {
+    throw _usageError(`--limit must be an integer between 1 and ${MaxListLimit}.`);
+  }
+  return limit;
 }
 
 export function NormalizeFileIds(values, options = {}) {

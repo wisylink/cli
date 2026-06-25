@@ -137,15 +137,15 @@ Success output:
 }
 ```
 
-### Links
+### Chat
 
-Every link is a hosted page built from a message. Create or continue a link via chat, then read or delete it.
+Create or continue a link by describing what you want — Wisy builds it into a hosted page.
 
 #### Chat
 
-(wisylink links chat --message <text> [--file-id <id>...] [--link-id <id>])
+(wisylink chat --message <text> [--file-id <id>...] [--link-id <id>])
 
-Maps to `POST /links`. Describe what you want and Wisy builds it into a hosted page. Omit `--link-id` to start a new link; pass it to continue an existing one — conversation history is kept server-side per link.
+Maps to `POST /chat`. Omit `--link-id` to start a new link; pass it to continue an existing one — conversation history is kept server-side per link.
 
 Arguments:
 
@@ -158,7 +158,7 @@ Arguments:
 Example:
 
 ```bash
-wisylink links chat \
+wisylink chat \
   --message "Build a landing page for a specialty coffee shop called Ember." \
   --file-id 67e6f6e6c5a91e4d2d9b0a11
 ```
@@ -189,6 +189,59 @@ Success output:
 ```
 
 `answer` is Wisy's short reply; the hosted `url` goes live once the build finishes.
+
+### Links
+
+List, read, and delete links.
+
+#### List Links
+
+(wisylink links list [--page <n>] [--limit <n>])
+
+Maps to `GET /links`. Pages through your links, newest first.
+
+| Flag | Type | Required | Rules |
+| --- | --- | --- | --- |
+| `--page` | `number` | No | 1-based page number (default 1) |
+| `--limit` | `number` | No | Items per page, 1..100 (default 20) |
+
+Example:
+
+```bash
+wisylink links list --page 1 --limit 20
+```
+
+```js
+import { CreateWisyLinkClient } from "@wisylink/cli";
+
+const client = CreateWisyLinkClient({ apiKey: "<api-key>" });
+const page = await client.listLinks({ page: 1, limit: 20 });
+console.log(page.items);
+```
+
+Success output:
+
+```json
+{
+  "items": [
+    {
+      "id": "67e6f6e6c5a91e4d2d9b0a77",
+      "url": "https://67e6f6e6c5a91e4d2d9b0a77.wisylink.com",
+      "status": "completed",
+      "meta": { "title": "Ember", "description": "Specialty coffee shop landing page." },
+      "file_ids": ["67e6f6e6c5a91e4d2d9b0a11"],
+      "created_at": 1762432496000,
+      "updated_at": 1762432596000
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 1,
+  "total_pages": 1,
+  "has_prev": false,
+  "has_next": false
+}
+```
 
 #### Get Link
 
