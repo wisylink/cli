@@ -9,7 +9,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "wisylink": "./bin/wisylink.js"
+    "wisylink": "bin/wisylink.js"
   },
   "files": [
     "bin",
