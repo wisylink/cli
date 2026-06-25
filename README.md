@@ -137,9 +137,9 @@ Success output:
 }
 ```
 
-### Chat
+### Links
 
-Create or continue a link by describing what you want — Wisy builds it into a hosted page.
+Create links by chatting with Wisy, then list, read, and delete them.
 
 #### Chat
 
@@ -189,10 +189,6 @@ Success output:
 ```
 
 `answer` is Wisy's short reply; the hosted `url` goes live once the build finishes.
-
-### Links
-
-List, read, and delete links.
 
 #### List Links
 
