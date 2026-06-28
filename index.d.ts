@@ -35,7 +35,6 @@ export interface LinkSummary {
   url: string;
   /** Link build status: building | completed | aborted | idle */
   status: string;
-  meta: { title?: string; description?: string } | null;
   file_ids: string[];
   created_at: number;
   updated_at: number;
