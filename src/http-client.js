@@ -2,6 +2,22 @@ import { readFile, stat } from "node:fs/promises";
 import { CliError } from "./runtime-error.js";
 import { NormalizeApiUrl, ParseTimeoutMs, ResolveFixedApiUrl } from "./validators.js";
 const _maxChunkBytes = 4 * 1024 * 1024;
+const _edgeRetries = 2;
+const _sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// The platform's single edge-retry, mirrored from the env repo's functions/agent/templates/edge.js:
+// Cloudflare's edge (Bot Fight Mode) can 403 a request before the origin ever runs, so replaying it is
+// safe — and an origin 403 is JSON while an edge challenge page is not, so genuine denials surface at once.
+async function _edgeFetch(url, init) {
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(url, init);
+    const edge =
+      response.status === 403 &&
+      !String(response.headers.get("content-type") || "").toLowerCase().includes("json");
+    if (!edge || attempt >= _edgeRetries) return response;
+    await _sleep(500 * (attempt + 1));
+  }
+}
 
 function _joinApiUrl(baseUrl, path) {
   const normalizedBase = NormalizeApiUrl(baseUrl);
@@ -100,7 +116,7 @@ async function _requestJson({ apiKey, userAgent, timeoutMs, ...request }) {
       ...(request.headers || {}),
     };
 
-    const response = await fetch(request.url, {
+    const response = await _edgeFetch(request.url, {
       method: request.method,
       headers,
       body: request.body,
