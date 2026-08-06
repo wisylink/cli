@@ -1,3 +1,4 @@
+import { DefaultApiUrl } from "./constants.js";
 import { CliError } from "./runtime-error.js";
 
 function _usageError(message) {
@@ -79,7 +80,7 @@ function _parseGlobalOptions(argv) {
 
     if (parsedFlag.name === "api-url") {
       throw _usageError(
-        "--api-url is not supported. API URL is fixed to https://wisylink.com/api."
+        `--api-url is not supported. API URL is fixed to ${DefaultApiUrl}.`
       );
     }
 
