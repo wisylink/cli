@@ -45,7 +45,7 @@ test("NormalizeApiUrl rejects query params", () => {
 });
 
 test("ResolveFixedApiUrl should return default when empty", () => {
-  assert.equal(ResolveFixedApiUrl(undefined), "https://wisylink.com/api");
+  assert.equal(ResolveFixedApiUrl(undefined), "https://api.wisylink.com");
 });
 
 test("ResolveFixedApiUrl should reject custom URL", () => {

@@ -1,4 +1,4 @@
-export const DefaultApiUrl = "https://wisylink.com/api";
+export const DefaultApiUrl = "https://api.wisylink.com";
 export const DefaultTimeoutMs = 30000;
 export const MinTimeoutMs = 1000;
 export const MaxTimeoutMs = 120000;

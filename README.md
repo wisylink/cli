@@ -294,6 +294,6 @@ All command outputs are root-level JSON objects aligned with API responses.
 ## Security Notes
 
 - Your API key is read from `WISYLINK_API_KEY` or `--api-key` and is never echoed, logged, or written to any output stream.
-- All requests go over HTTPS to `https://wisylink.com/api`.
+- All requests go over HTTPS to `https://api.wisylink.com`.
 - Command output is JSON-only; no debug traces, stack frames, or credential leaks are printed.
 - Keep your API key out of shell history and version control. Use an environment variable or a secret manager.
