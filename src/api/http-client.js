@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
-import { CliError } from "./runtime-error.js";
-import { NormalizeApiUrl, ParseTimeoutMs, ResolveFixedApiUrl } from "./validators.js";
+import { CliError } from "../runtime-error.js";
+import { NormalizeApiUrl, ParseTimeoutMs, ResolveFixedApiUrl } from "../validators.js";
 const _maxChunkBytes = 4 * 1024 * 1024;
 
 function _joinApiUrl(baseUrl, path) {

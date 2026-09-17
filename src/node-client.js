@@ -1,5 +1,5 @@
 import { DefaultTimeoutMs } from "./constants.js";
-import { CreateApiClient } from "./http-client.js";
+import { CreateApiClient } from "./api/http-client.js";
 import {
   AssertApiKey,
   AssertIdentifier,
