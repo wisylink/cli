@@ -82,3 +82,22 @@ test("ParseCliArgs should reject deprecated api-url flag", () => {
   );
 });
 
+test("ParseCliArgs should parse chat with optional message for REPL", () => {
+  const parsed = ParseCliArgs(["chat"]);
+  assert.equal(parsed.kind, "command");
+  assert.equal(parsed.name, "chat");
+  assert.equal(parsed.args.message, undefined);
+});
+
+test("ParseCliArgs should parse login / logout / whoami", () => {
+  assert.equal(ParseCliArgs(["login"]).name, "login");
+  assert.equal(ParseCliArgs(["logout"]).name, "logout");
+  assert.equal(ParseCliArgs(["whoami"]).name, "whoami");
+});
+
+test("ParseCliArgs should parse --json global flag", () => {
+  const parsed = ParseCliArgs(["--json", "whoami"]);
+  assert.equal(parsed.global.json, true);
+  assert.equal(parsed.name, "whoami");
+});
+
