@@ -48,6 +48,7 @@ function _parseGlobalOptions(argv) {
   const global = {
     help: false,
     version: false,
+    json: false,
     apiKey: undefined,
     timeoutMs: undefined,
   };
@@ -62,6 +63,10 @@ function _parseGlobalOptions(argv) {
     }
     if (token === "--version" || token === "-v") {
       global.version = true;
+      continue;
+    }
+    if (token === "--json") {
+      global.json = true;
       continue;
     }
 
@@ -91,6 +96,11 @@ function _parseGlobalOptions(argv) {
       continue;
     }
 
+    if (parsedFlag.name === "json") {
+      global.json = true;
+      continue;
+    }
+
     commandTokens.push(token);
   }
 
@@ -112,6 +122,14 @@ function _parseFlags(tokens, allowedMap) {
     const rule = allowedMap[parsedFlag.name];
     if (!rule) {
       throw _usageError(`Unknown flag: --${parsedFlag.name}`);
+    }
+
+    if (rule.boolean) {
+      if (parsedFlag.hasInlineValue) {
+        throw _usageError(`--${parsedFlag.name} does not take a value.`);
+      }
+      values[parsedFlag.name] = true;
+      continue;
     }
 
     const { value, next } = _readFlagValue(
@@ -195,8 +213,10 @@ function _parseChatCommand(tokens) {
     "link-id": { repeatable: false },
   });
 
-  if (!parsed.values.message) {
-    throw _usageError("Usage: wisylink chat --message <text> [--file-id <id>...] [--link-id <id>]");
+  if (parsed.positionals.length) {
+    throw _usageError(
+      "Usage: wisylink chat [--message <text>] [--file-id <id>...] [--link-id <id>]"
+    );
   }
 
   return {
@@ -299,15 +319,36 @@ export function ParseCliArgs(argv = []) {
     };
   }
 
+  if (group === "login") {
+    if (parsed.commandTokens.length > 1) {
+      throw _usageError("Usage: wisylink login");
+    }
+    return { kind: "command", name: "login", args: {}, global: parsed.global };
+  }
+
+  if (group === "logout") {
+    if (parsed.commandTokens.length > 1) {
+      throw _usageError("Usage: wisylink logout");
+    }
+    return { kind: "command", name: "logout", args: {}, global: parsed.global };
+  }
+
+  if (group === "whoami") {
+    if (parsed.commandTokens.length > 1) {
+      throw _usageError("Usage: wisylink whoami");
+    }
+    return { kind: "command", name: "whoami", args: {}, global: parsed.global };
+  }
+
   const commandTokens = parsed.commandTokens.slice(1);
   const command =
     group === "files"
       ? _parseFilesCommand(commandTokens)
       : group === "chat"
-      ? _parseChatCommand(commandTokens)
-      : group === "links"
-      ? _parseLinksCommand(commandTokens)
-      : null;
+        ? _parseChatCommand(commandTokens)
+        : group === "links"
+          ? _parseLinksCommand(commandTokens)
+          : null;
 
   if (!command) {
     throw _usageError(`Unknown command group: ${group}`);
