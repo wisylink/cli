@@ -156,8 +156,8 @@ export function renderReport(report, { status } = {}) {
 
   if (status) {
     const label =
-      status === "building"
-        ? yellow("building")
+      status === "building" || status === "queued"
+        ? yellow(status)
         : status === "completed"
           ? green("completed")
           : status === "aborted"

@@ -2,6 +2,7 @@ import { createInterface } from "node:readline";
 import { ClearCredentials, ReadCredentials } from "../auth/credentials.js";
 import { RunDeviceLogin, warnApiKeyOverride } from "../auth/login.js";
 import { CreateApiClient } from "../api/http-client.js";
+import { BuildStatus, IsBuildActive } from "../build-status.js";
 import { CreateSessionClient, SessionUrl } from "../api/session-client.js";
 import { CreateWisyLinkClient } from "../node-client.js";
 import { CliError } from "../runtime-error.js";
@@ -77,12 +78,14 @@ async function _resolveAuth(command, version) {
   };
 }
 
-async function _pollBuild({ sessionClient, linkId, json, abortSignal }) {
+// Polls a link's build until it settles. A queued build keeps the poll going: it has not run yet.
+export async function PollBuild({ sessionClient, linkId, json, abortSignal, intervalMs = 2500 }) {
   if (json || !linkId) return null;
 
   let lastLines = 0;
   let lastFingerprint = "";
-  const spinner = createSpinner("Building preview");
+  const spinnerLabel = (state) => (state === BuildStatus.Queued ? "Build queued" : "Building preview");
+  const spinner = createSpinner(spinnerLabel(BuildStatus.Building));
   spinner.start();
 
   const pollOnce = async () => {
@@ -98,7 +101,7 @@ async function _pollBuild({ sessionClient, linkId, json, abortSignal }) {
       renderReport(status?.report, { status: status?.status });
       lastLines = countReportLines(status?.report, { status: status?.status });
       lastFingerprint = fingerprint;
-      if (status?.status === "building") spinner.start("Building preview");
+      if (IsBuildActive(status?.status)) spinner.start(spinnerLabel(status.status));
     }
     return status;
   };
@@ -107,22 +110,22 @@ async function _pollBuild({ sessionClient, linkId, json, abortSignal }) {
     while (!abortSignal.aborted) {
       const status = await pollOnce();
       const state = status?.status;
-      if (state === "completed") {
+      if (state === BuildStatus.Completed) {
         spinner.stop();
         println(success("Build completed"));
         return status;
       }
-      if (state === "aborted") {
+      if (state === BuildStatus.Aborted) {
         spinner.stop();
         println(failure("Build aborted"));
         return status;
       }
-      if (state && state !== "building") {
+      if (state && !IsBuildActive(state)) {
         spinner.stop();
         return status;
       }
       await new Promise((resolve, reject) => {
-        const timer = setTimeout(resolve, 2500);
+        const timer = setTimeout(resolve, intervalMs);
         const onAbort = () => {
           clearTimeout(timer);
           reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
@@ -136,7 +139,7 @@ async function _pollBuild({ sessionClient, linkId, json, abortSignal }) {
     }
   } catch (error) {
     spinner.stop();
-    if (error?.name === "AbortError") return { status: "aborted", cancelled: true };
+    if (error?.name === "AbortError") return { status: BuildStatus.Aborted, cancelled: true };
     throw error;
   }
 
@@ -207,7 +210,7 @@ async function _runSessionChatTurn({ client, message, fileIds, linkId, json }) {
     };
     process.once("SIGINT", onSigint);
     try {
-      await _pollBuild({
+      await PollBuild({
         sessionClient: client,
         linkId: id,
         json: false,
@@ -245,8 +248,9 @@ async function _runApiChat({ client, message, fileIds, linkId, json }) {
     sessionUrl: SessionUrl(result?.id),
     hostedUrl: result?.url,
   });
-  if (result?.status === "building") {
-    println(yellow("Build started. Poll status with: wisylink links get <id>"));
+  if (IsBuildActive(result?.status)) {
+    const verb = result.status === BuildStatus.Queued ? "queued" : "started";
+    println(yellow(`Build ${verb}. Check its status with: wisylink links get ${result.id}`));
   }
   return result;
 }

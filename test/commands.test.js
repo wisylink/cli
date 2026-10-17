@@ -4,7 +4,8 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { RunCli } from "../src/cli.js";
-import { ChatRepl } from "../src/commands/index.js";
+import { ChatRepl, PollBuild } from "../src/commands/index.js";
+import { BuildStatus, IsBuildActive } from "../src/build-status.js";
 
 const LINK_ID = "k3x9a2";
 const FILE_ID = "67e6f6e6c5a91e4d2d9b0a11";
@@ -254,4 +255,101 @@ test("repl: without --link-id the first turn starts a new link and later turns c
     sent.map((turn) => turn.linkId),
     ["", LINK_ID],
   );
+});
+
+test("IsBuildActive covers the API's running and queued states only", () => {
+  assert.equal(IsBuildActive("building"), true);
+  assert.equal(IsBuildActive("queued"), true);
+  for (const status of ["completed", "aborted", "idle", "", undefined, null, "Building"]) {
+    assert.equal(IsBuildActive(status), false, String(status));
+  }
+  assert.deepEqual(Object.values(BuildStatus).sort(), ["aborted", "building", "completed", "idle", "queued"]);
+});
+
+function _statusClient(sequence) {
+  const seen = [];
+  return {
+    seen,
+    async buildStatus(query) {
+      seen.push(query);
+      const next = sequence.length > 1 ? sequence.shift() : sequence[0];
+      return { status: next, report: { note: `now ${next}`, tasks: [] } };
+    },
+  };
+}
+
+test("PollBuild keeps polling while a build is queued, then follows it to completion", async () => {
+  const client = _statusClient(["queued", "queued", "building", "completed"]);
+  const result = await PollBuild({
+    sessionClient: client,
+    linkId: LINK_ID,
+    json: false,
+    abortSignal: new AbortController().signal,
+    intervalMs: 1,
+  });
+  assert.equal(result.status, "completed");
+  assert.equal(client.seen.length, 4);
+  assert.deepEqual(client.seen[0], { linkId: LINK_ID });
+  assert.match(stdout, /queued/);
+  assert.match(stdout, /Build completed/);
+});
+
+test("PollBuild stops on aborted and on states that are not active", async () => {
+  for (const [state, text] of [
+    ["aborted", /Build aborted/],
+    ["idle", /^/],
+  ]) {
+    stdout = "";
+    const client = _statusClient([state]);
+    const result = await PollBuild({
+      sessionClient: client,
+      linkId: LINK_ID,
+      json: false,
+      abortSignal: new AbortController().signal,
+      intervalMs: 1,
+    });
+    assert.equal(result.status, state);
+    assert.equal(client.seen.length, 1);
+    assert.match(stdout, text);
+  }
+});
+
+test("PollBuild reports a cancelled poll and does nothing for --json", async () => {
+  const controller = new AbortController();
+  const client = _statusClient(["queued"]);
+  const pending = PollBuild({
+    sessionClient: client,
+    linkId: LINK_ID,
+    json: false,
+    abortSignal: controller.signal,
+    intervalMs: 60_000,
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  controller.abort();
+  assert.deepEqual(await pending, { status: "aborted", cancelled: true });
+
+  const quiet = _statusClient(["queued"]);
+  assert.equal(
+    await PollBuild({ sessionClient: quiet, linkId: LINK_ID, json: true, abortSignal: controller.signal }),
+    null,
+  );
+  assert.equal(quiet.seen.length, 0);
+});
+
+test("api key chat tells the user when the build is queued or started", async () => {
+  const cases = [
+    ["queued", /Build queued\. Check its status with: wisylink links get k3x9a2/],
+    ["building", /Build started\. Check its status with: wisylink links get k3x9a2/],
+    ["completed", /^(?![\s\S]*Build (queued|started))/],
+  ];
+  for (const [status, expected] of cases) {
+    stdout = "";
+    routes = [];
+    on("POST", "/chat", () =>
+      _json({ id: LINK_ID, url: `https://${LINK_ID}.wisylink.com`, status, answer: "On it." }, 201),
+    );
+    assert.equal(await run("--api-key", "key-1", "chat", "--message", "Build a page."), 0);
+    assert.match(stdout, /On it\./);
+    assert.match(stdout, expected, status);
+  }
 });

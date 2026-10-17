@@ -5,9 +5,9 @@ export interface ClientOptions {
 }
 
 export interface ChatInput {
-  /** The message to send to Wisy */
-  message?: string;
-  /** Reference files to attach */
+  /** The message to send to Wisy: required, 1..5000 characters after trimming */
+  message: string;
+  /** Reference files to attach: up to 10 file ids (24-char hex) */
   fileIds?: string[];
   /** Continue an existing link: its 6-character id, lowercase a-z0-9 (optional) */
   linkId?: string;
@@ -16,7 +16,7 @@ export interface ChatInput {
 export interface ChatResult {
   id: string;
   url: string;
-  /** Link build status: building | completed | aborted | idle */
+  /** Link build status: building | queued | completed | aborted | idle */
   status: string;
   answer: string;
   created_at: number;
@@ -33,7 +33,7 @@ export interface ListLinksInput {
 export interface LinkSummary {
   id: string;
   url: string;
-  /** Link build status: building | completed | aborted | idle */
+  /** Link build status: building | queued | completed | aborted | idle */
   status: string;
   file_ids: string[];
   created_at: number;
