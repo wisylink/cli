@@ -124,7 +124,21 @@ export async function RunDeviceLogin({ userAgent, json = false, openBrowser = tr
   const authorizeUrl = verificationUriComplete || `${verificationUri}?user_code=${encodeURIComponent(userCode)}`;
 
   if (json) {
-    // Machine-readable bootstrap; caller still polls via this process.
+    // The code and URL are the only way to finish the login, and the polling below blocks until it is done, so a
+    // --json run reports them on stderr and keeps stdout for the single result object.
+    process.stderr.write(
+      `${JSON.stringify(
+        {
+          status: "authorization_pending",
+          user_code: userCode,
+          verification_uri: verificationUri,
+          verification_uri_complete: authorizeUrl,
+          expires_in: Number(expiresIn) || 900,
+        },
+        null,
+        2,
+      )}\n`,
+    );
   } else {
     printBanner("WisyLink login");
     println(`${info("Confirm this code in your browser:")}`);

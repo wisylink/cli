@@ -51,6 +51,7 @@ wisylink links list --api-key "your_api_key" --json
 
 - On a terminal the CLI prints readable text: spinners, the session and preview links, build reports.
 - `--json` prints the result as one JSON object on stdout and errors as a JSON object on stderr, with no spinners or prompts. Use it in scripts and CI. It takes no value and works before or after the command.
+- `wisylink login --json` writes the device code and URL as a JSON object to stderr, waits for approval, then prints `{ "ok": true, "user": … }` on stdout.
 - `files` and `links` commands also print JSON on their own when stdin or stdout is not a terminal. `chat` prints text unless `--json` is given.
 - Versions before 0.3 printed JSON only and rejected `--json`. A script that reads `chat` output must add `--json` when it moves to 0.3 or later.
 

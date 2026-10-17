@@ -96,12 +96,13 @@ async function run(...argv) {
   return RunCli(argv);
 }
 
-// The REPL only starts on a terminal; pretend to be one while `fn` runs.
-async function withTty(fn) {
+// The REPL only starts on a terminal; pretend to be one (or not to be, so `login` never opens a browser
+// when the suite is run by hand in a terminal) while `fn` runs.
+async function withTty(fn, isTty = true) {
   const stdinTty = process.stdin.isTTY;
   const stdoutTty = process.stdout.isTTY;
-  process.stdin.isTTY = true;
-  process.stdout.isTTY = true;
+  process.stdin.isTTY = isTty;
+  process.stdout.isTTY = isTty;
   try {
     return await fn();
   } finally {
@@ -495,4 +496,41 @@ test("chat turns get a 120 s timeout by default and --timeout applies to every r
   calls.length = 0;
   assert.equal(await run("--api-key", "k", "--timeout", "5000", ...chat), 0);
   assert.deepEqual(calls.map((call) => call.timeoutMs), [5000]);
+});
+
+function _deviceRoutes({ tokenResponse }) {
+  on("POST", "/cli/device/code", () =>
+    _json({
+      device_code: "device-code",
+      user_code: "ABCD-2345",
+      verification_uri: "https://wisylink.com/cli/authorize",
+      verification_uri_complete: "https://wisylink.com/cli/authorize?user_code=ABCD-2345",
+      interval: 1,
+      expires_in: 900,
+    }),
+  );
+  on("POST", "/cli/device/token", tokenResponse);
+}
+
+test("login --json reports the code and URL on stderr, then the result on stdout", async () => {
+  _deviceRoutes({
+    tokenResponse: () => _json({ token: "new-token", user: { id: "u1", email: "grace@example.com" } }),
+  });
+  assert.equal(await withTty(() => run("login", "--json"), false), 0);
+
+  const pending = JSON.parse(stderr);
+  assert.equal(pending.status, "authorization_pending");
+  assert.equal(pending.user_code, "ABCD-2345");
+  assert.equal(pending.verification_uri_complete, "https://wisylink.com/cli/authorize?user_code=ABCD-2345");
+  assert.equal(pending.expires_in, 900);
+  assert.deepEqual(JSON.parse(stdout), { ok: true, user: { id: "u1", email: "grace@example.com" } });
+  assert.deepEqual(JSON.parse(calls[1].body), { device_code: "device-code" });
+});
+
+test("login without --json prints the code for the user", async () => {
+  _deviceRoutes({ tokenResponse: () => _json({ token: "new-token", user: { email: "grace@example.com" } }) });
+  assert.equal(await withTty(() => run("login"), false), 0);
+  assert.match(stdout, /ABCD-2345/);
+  assert.match(stdout, /user_code=ABCD-2345/);
+  assert.equal(stderr, "");
 });
