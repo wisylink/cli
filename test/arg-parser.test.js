@@ -101,3 +101,27 @@ test("ParseCliArgs should parse --json global flag", () => {
   assert.equal(parsed.name, "whoami");
 });
 
+
+test("ParseCliArgs should accept --json anywhere among the arguments", () => {
+  for (const argv of [
+    ["--json", "links", "get", "k3x9a2"],
+    ["links", "--json", "get", "k3x9a2"],
+    ["links", "get", "k3x9a2", "--json"],
+  ]) {
+    const parsed = ParseCliArgs(argv);
+    assert.equal(parsed.global.json, true, argv.join(" "));
+    assert.equal(parsed.name, "links.get");
+    assert.equal(parsed.args.id, "k3x9a2");
+  }
+  assert.equal(ParseCliArgs(["links", "get", "k3x9a2"]).global.json, false);
+});
+
+test("ParseCliArgs should reject a value on --json", () => {
+  assert.throws(() => ParseCliArgs(["links", "list", "--json=false"]), /--json does not take a value/);
+  assert.throws(() => ParseCliArgs(["--json=true", "whoami"]), /--json does not take a value/);
+});
+
+test("ParseCliArgs should parse links get/delete with a real link id", () => {
+  assert.equal(ParseCliArgs(["links", "get", "k3x9a2"]).args.id, "k3x9a2");
+  assert.equal(ParseCliArgs(["links", "delete", "k3x9a2"]).args.id, "k3x9a2");
+});

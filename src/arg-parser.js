@@ -97,8 +97,8 @@ function _parseGlobalOptions(argv) {
     }
 
     if (parsedFlag.name === "json") {
-      global.json = true;
-      continue;
+      // `--json` alone is handled above; `--json=false` must not silently switch JSON on.
+      throw _usageError("--json does not take a value.");
     }
 
     commandTokens.push(token);
