@@ -51,8 +51,8 @@ wisylink links list --api-key "your_api_key" --json
 
 | Rule | Value |
 | --- | --- |
-| File id format | 24-char hex |
-| Link id format | 24-char hex |
+| File id format | 24-char hex (e.g. `67e6f6e6c5a91e4d2d9b0a11`) |
+| Link id format | 6 chars, lowercase `a-z0-9` (e.g. `k3x9a2`) |
 | Max file_ids per chat | `10` |
 | Message max length | `5000` chars |
 
@@ -83,7 +83,7 @@ wisylink chat --message "Build a landing page for Ember Coffee." --file-id 67e6f
 Continue a session:
 
 ```bash
-wisylink chat --link-id 67e6f6e6c5a91e4d2d9b0a77 --message "Make the hero darker."
+wisylink chat --link-id k3x9a2 --message "Make the hero darker."
 ```
 
 After each turn the CLI prints the session URL (`https://wisylink.com/chat/<id>`) and the hosted preview URL. While a build is running it polls status, animates the live report, and **Ctrl+C** stops the build.
@@ -108,8 +108,8 @@ Uploads use `<=4 MB` chunks (up to `25 MB` total). Works with a login session or
 
 ```bash
 wisylink links list --page 1 --limit 20
-wisylink links get 67e6f6e6c5a91e4d2d9b0a77
-wisylink links delete 67e6f6e6c5a91e4d2d9b0a77
+wisylink links get k3x9a2
+wisylink links delete k3x9a2
 ```
 
 ## Node client

@@ -9,7 +9,7 @@ export interface ChatInput {
   message?: string;
   /** Reference files to attach */
   fileIds?: string[];
-  /** Continue an existing link (optional) */
+  /** Continue an existing link: its 6-character id, lowercase a-z0-9 (optional) */
   linkId?: string;
 }
 
@@ -58,7 +58,9 @@ export interface WisyLinkClient {
   chat(input: ChatInput): Promise<ChatResult>;
   /** Page through your links, newest first (GET /links) */
   listLinks(input?: ListLinksInput): Promise<ListLinksResult>;
+  /** linkId: 6 lowercase a-z0-9 characters */
   getLink(linkId: string): Promise<Record<string, unknown>>;
+  /** linkId: 6 lowercase a-z0-9 characters */
   deleteLink(linkId: string): Promise<Record<string, unknown>>;
 }
 

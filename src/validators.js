@@ -2,6 +2,7 @@ import {
   DefaultApiUrl,
   DefaultTimeoutMs,
   IdentifierRegex,
+  LinkIdRegex,
   MaxFileIdsPerRequest,
   MaxListLimit,
   MaxMessageLength,
@@ -98,10 +99,23 @@ export function ParseTimeoutMs(value) {
   return timeoutMs;
 }
 
+// File ids: 24 hex characters, read case-insensitively like the API does.
 export function AssertIdentifier(value, label = "id") {
   const normalized = _asString(value).trim().toLowerCase();
   if (!IdentifierRegex.test(normalized)) {
     throw _usageError(`${label} must be a 24-character hex string.`);
+  }
+  return normalized;
+}
+
+// Link ids: exactly 6 lowercase letters or digits. Not case-folded: the API matches the stored form only,
+// so "ABC123" would be a different (unknown) link there.
+export function AssertLinkId(value, label = "link id") {
+  const normalized = _asString(value).trim();
+  if (!LinkIdRegex.test(normalized)) {
+    throw _usageError(
+      `${label} must be 6 lowercase letters or digits (a-z, 0-9), like k3x9a2.`,
+    );
   }
   return normalized;
 }

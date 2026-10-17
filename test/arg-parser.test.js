@@ -8,7 +8,7 @@ test("ParseCliArgs should parse chat with repeatable file-id and link-id", () =>
     "--message",
     "hello",
     "--link-id",
-    "67e6f6e6c5a91e4d2d9b0a77",
+    "k3x9a2",
     "--file-id",
     "67e6f6e6c5a91e4d2d9b0a11",
     "--file-id",
@@ -18,7 +18,7 @@ test("ParseCliArgs should parse chat with repeatable file-id and link-id", () =>
   assert.equal(parsed.kind, "command");
   assert.equal(parsed.name, "chat");
   assert.equal(parsed.args.message, "hello");
-  assert.equal(parsed.args.linkId, "67e6f6e6c5a91e4d2d9b0a77");
+  assert.equal(parsed.args.linkId, "k3x9a2");
   assert.equal(parsed.args.fileIds.length, 2);
 });
 
@@ -76,7 +76,7 @@ test("ParseCliArgs should reject deprecated api-url flag", () => {
         "https://example.com/api",
         "links",
         "get",
-        "67e6f6e6c5a91e4d2d9b0a11",
+        "k3x9a2",
       ]),
     /not supported/
   );

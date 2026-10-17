@@ -6,7 +6,12 @@ export const MaxMessageLength = 5000;
 export const MaxFileIdsPerRequest = 10;
 export const MaxListLimit = 100;
 export const DefaultListLimit = 20;
+
+// File ids are 24 lowercase hex characters (app.hex_id); the API reads them case-insensitively.
 export const IdentifierRegex = /^[a-f0-9]{24}$/;
+// Link ids are exactly 6 lowercase alphanumerics (app.link_id in the API): the link's hostname label.
+// The API matches them as stored, with no case folding, so neither do we.
+export const LinkIdRegex = /^[a-z0-9]{6}$/;
 
 
 export const SupportedFileExtensions = [

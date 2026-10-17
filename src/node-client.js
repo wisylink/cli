@@ -3,6 +3,7 @@ import { CreateApiClient } from "./api/http-client.js";
 import {
   AssertApiKey,
   AssertIdentifier,
+  AssertLinkId,
   NormalizeFileIds,
   NormalizeListLimit,
   NormalizeListPage,
@@ -45,7 +46,7 @@ function _buildChatPayload(input) {
 
   // Optional: `id` in body = continue an existing link
   if (data.linkId) {
-    payload.id = AssertIdentifier(data.linkId, "link id");
+    payload.id = AssertLinkId(data.linkId);
   }
 
   return payload;
@@ -85,12 +86,12 @@ export function CreateWisyLinkClient(options = {}) {
     },
 
     async getLink(linkId) {
-      const id = AssertIdentifier(linkId, "link id");
+      const id = AssertLinkId(linkId);
       return apiClient.GetLink(id);
     },
 
     async deleteLink(linkId) {
-      const id = AssertIdentifier(linkId, "link id");
+      const id = AssertLinkId(linkId);
       return apiClient.DeleteLink(id);
     },
   };
