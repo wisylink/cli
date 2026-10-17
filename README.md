@@ -105,7 +105,7 @@ Automation:
 wisylink chat --message "…" --api-key "$WISYLINK_API_KEY" --json
 ```
 
-The JSON has `id`, `url`, `status`, `answer`, `created_at`, `updated_at` and `session_url` with an API key; with a login session it has `id`, `url`, `session_url`, `building` and `answer`.
+The JSON has `id`, `url`, `status`, `answer`, `created_at`, `updated_at` and `session_url` with an API key; with a login session it has `id`, `url`, `session_url`, `building` and `answer`, plus `rejected_files` when a file was left off because it would exceed your storage quota.
 
 ### Files
 

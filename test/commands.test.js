@@ -438,3 +438,28 @@ test("whoami falls back to the saved account only when the API cannot be reached
   assert.equal(await run("whoami"), 0);
   assert.match(stdout, /Signed in as .*dev@example\.com/);
 });
+
+test("session chat says which files the API did not attach", async () => {
+  on("POST", `/internal/chat/${LINK_ID}/message`, () =>
+    _json({ link_id: LINK_ID, building: false, text: "Done.", rejected_files: [FILE_ID] }),
+  );
+  on("GET", `/internal/links/${LINK_ID}`, () => _json({ url: `https://${LINK_ID}.wisylink.com` }));
+
+  const args = ["chat", "--message", "Use this.", "--link-id", LINK_ID, "--file-id", FILE_ID];
+  assert.equal(await run(...args), 0);
+  assert.match(stdout, new RegExp(`Not attached \\(storage quota exceeded\\): ${FILE_ID}`));
+
+  stdout = "";
+  assert.equal(await run(...args, "--json"), 0);
+  assert.deepEqual(JSON.parse(stdout).rejected_files, [FILE_ID]);
+});
+
+test("session chat output has no rejected_files when every file was attached", async () => {
+  on("POST", `/internal/chat/${LINK_ID}/message`, () =>
+    _json({ link_id: LINK_ID, building: false, text: "Done.", rejected_files: [] }),
+  );
+  on("GET", `/internal/links/${LINK_ID}`, () => _json({ url: "" }));
+  assert.equal(await run("chat", "--message", "hi", "--link-id", LINK_ID, "--file-id", FILE_ID, "--json"), 0);
+  assert.equal("rejected_files" in JSON.parse(stdout), false);
+  assert.doesNotMatch(stdout, /Not attached/);
+});

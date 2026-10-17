@@ -30,6 +30,7 @@ import {
   println,
   renderReport,
   success,
+  warn,
   yellow,
 } from "../ui/tty.js";
 
@@ -176,12 +177,15 @@ async function _runSessionChatTurn({ client, message, fileIds, linkId, json }) {
   }
 
   const sessionUrl = SessionUrl(id);
+  // Files the API left off the link because they would exceed the account's storage quota.
+  const rejectedFiles = Array.isArray(result?.rejected_files) ? result.rejected_files.map(String) : [];
   const output = {
     id,
     url: hostedUrl,
     session_url: sessionUrl,
     building: !!result?.building,
     answer: typeof result?.text === "string" ? result.text : "",
+    ...(rejectedFiles.length ? { rejected_files: rejectedFiles } : {}),
   };
 
   if (json) {
@@ -193,6 +197,10 @@ async function _runSessionChatTurn({ client, message, fileIds, linkId, json }) {
     newline();
     println(`${bold("Wisy")}`);
     println(output.answer);
+  }
+
+  if (rejectedFiles.length) {
+    println(warn(`Not attached (storage quota exceeded): ${rejectedFiles.join(", ")}`));
   }
 
   printSessionUrls({ sessionUrl, hostedUrl });
