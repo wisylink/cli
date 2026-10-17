@@ -359,8 +359,10 @@ export async function ExecuteWhoami(command, version) {
   let session = null;
   try {
     session = await auth.client.whoami();
-  } catch {
-    session = null;
+  } catch (error) {
+    // An ended session is an answer, not a reason to show the account saved at login. Only a failure to
+    // reach the API (network, timeout, a 5xx) falls back to that saved account.
+    if (error?.code === "auth_error" || error?.details?.status === 401) throw error;
   }
 
   const user = session?.user || auth.credentials?.user || null;

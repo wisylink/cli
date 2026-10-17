@@ -395,3 +395,46 @@ test("api key 401 keeps the API's own message", async () => {
   assert.equal(await run("--api-key", "bad", "links", "get", LINK_ID), 1);
   assert.match(stdout, /Missing or invalid API key\./);
 });
+
+test("whoami reports an ended session instead of the account saved at login", async () => {
+  // Better Auth answers 200 with a null body when the session is gone (sign-out, expiry).
+  on("GET", "/auth/get-session", () => new Response("null", { status: 200 }));
+  assert.equal(await run("whoami"), 1);
+  assert.match(stdout, /Session expired or not valid\. Run wisylink login again\./);
+  assert.doesNotMatch(stdout, /Signed in/);
+
+  stderr = "";
+  assert.equal(await run("whoami", "--json"), 1);
+  assert.equal(JSON.parse(stderr).error, "auth_error");
+});
+
+test("whoami treats a 401 as an ended session too", async () => {
+  on("GET", "/auth/get-session", () => _json({ error: "unauthorized" }, 401));
+  assert.equal(await run("whoami"), 1);
+  assert.match(stdout, /Run wisylink login again/);
+});
+
+test("whoami names the live session's account", async () => {
+  on("GET", "/auth/get-session", () =>
+    _json({ session: { token: "x" }, user: { id: "u1", email: "grace@example.com", name: "Grace" } }),
+  );
+  assert.equal(await run("whoami", "--json"), 0);
+  assert.deepEqual(JSON.parse(stdout), {
+    mode: "session",
+    user: { id: "u1", email: "grace@example.com", name: "Grace" },
+  });
+});
+
+test("whoami falls back to the saved account only when the API cannot be reached", async () => {
+  on("GET", "/auth/get-session", () => {
+    throw new TypeError("fetch failed");
+  });
+  assert.equal(await run("whoami"), 0);
+  assert.match(stdout, /Signed in as .*dev@example\.com/);
+
+  stdout = "";
+  routes = [];
+  on("GET", "/auth/get-session", () => _json({ error: "internal" }, 502));
+  assert.equal(await run("whoami"), 0);
+  assert.match(stdout, /Signed in as .*dev@example\.com/);
+});

@@ -29,12 +29,14 @@ async function _readResponseJson(response) {
   }
 }
 
+const SessionInvalidMessage = "Session expired or not valid. Run wisylink login again.";
+
 function _extractApiMessage(payload, status) {
   if (payload && typeof payload.message === "string" && payload.message.trim()) {
     return payload.message.trim();
   }
   // The session plane answers a bare {"error":"unauthorized"}: say what to do about it.
-  if (status === 401) return "Session expired or not valid. Run wisylink login again.";
+  if (status === 401) return SessionInvalidMessage;
   return `API request failed with status ${status}.`;
 }
 
@@ -150,6 +152,10 @@ export function CreateSessionClient(options = {}) {
         method: "GET",
         url: _joinApiUrl(apiUrl || DefaultApiUrl, "/auth/get-session"),
       });
+      // Better Auth answers 200 with a `null` body for a session that has ended or never existed.
+      if (!payload?.user || typeof payload.user !== "object") {
+        throw new CliError({ code: "auth_error", message: SessionInvalidMessage, exitCode: 1 });
+      }
       return payload;
     },
 
