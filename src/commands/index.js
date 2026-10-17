@@ -13,6 +13,7 @@ import {
   NormalizeListLimit,
   NormalizeListPage,
   NormalizeMessage,
+  ParseChatTimeoutMs,
   ParseGlobalRuntimeOptions,
 } from "../validators.js";
 import {
@@ -74,6 +75,7 @@ async function _resolveAuth(command, version) {
     client: CreateSessionClient({
       token: credentials.token,
       timeoutMs: command.global.timeoutMs,
+      chatTimeoutMs: ParseChatTimeoutMs(command.global.timeoutMs),
       userAgent: _userAgent(version),
     }),
   };

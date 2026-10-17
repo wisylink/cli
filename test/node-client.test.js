@@ -6,12 +6,25 @@ const LINK_ID = "k3x9a2";
 const FILE_ID = "67e6f6e6c5a91e4d2d9b0a11";
 
 let calls;
+let lastTimerMs;
 const realFetch = globalThis.fetch;
+const realSetTimeout = globalThis.setTimeout;
 
 beforeEach(() => {
   calls = [];
+  // Each request arms one abort timer just before it calls fetch; remember its delay.
+  globalThis.setTimeout = (fn, ms, ...rest) => {
+    lastTimerMs = ms;
+    return realSetTimeout(fn, ms, ...rest);
+  };
   globalThis.fetch = async (url, init = {}) => {
-    calls.push({ url: String(url), method: init.method, headers: init.headers, body: init.body });
+    calls.push({
+      url: String(url),
+      method: init.method,
+      headers: init.headers,
+      body: init.body,
+      timeoutMs: lastTimerMs,
+    });
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -21,6 +34,7 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.fetch = realFetch;
+  globalThis.setTimeout = realSetTimeout;
 });
 
 function client() {
@@ -103,4 +117,27 @@ test("chat enforces the 5000-character message cap and 10 file ids", async () =>
   assert.equal(calls.length, 0);
   await c.chat({ message: "a".repeat(5000), fileIds: ids.slice(0, 10) });
   assert.equal(calls.length, 1);
+});
+
+test("chat requests wait up to 120 s by default, every other request 30 s", async () => {
+  const c = client();
+  await c.chat({ message: "hi" });
+  await c.getLink(LINK_ID);
+  await c.listLinks();
+  await c.getFile(FILE_ID);
+  assert.deepEqual(
+    calls.map((call) => call.timeoutMs),
+    [120000, 30000, 30000, 30000],
+  );
+});
+
+test("an explicit timeoutMs applies to chat requests too", async () => {
+  const c = CreateWisyLinkClient({ apiKey: "test-key", timeoutMs: 5000 });
+  await c.chat({ message: "hi" });
+  await c.getLink(LINK_ID);
+  assert.deepEqual(
+    calls.map((call) => call.timeoutMs),
+    [5000, 5000],
+  );
+  assert.throws(() => CreateWisyLinkClient({ apiKey: "k", timeoutMs: 999 }), /between 1000 and 120000/);
 });

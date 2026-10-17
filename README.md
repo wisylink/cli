@@ -43,7 +43,7 @@ wisylink links list --api-key "your_api_key" --json
 | --- | --- | --- |
 | `--api-key <value>` | `string` | Override `WISYLINK_API_KEY` (automation) |
 | `--json` | `boolean` | JSON on stdout, errors as JSON on stderr; no spinners (see [Output](#output)) |
-| `--timeout <ms>` | `number` | Request timeout (`1000..120000`) |
+| `--timeout <ms>` | `number` | Request timeout (`1000..120000`). Default `30000`; a chat turn defaults to `120000` |
 | `--help` | `boolean` | Show command help |
 | `--version` | `boolean` | Show installed CLI version |
 

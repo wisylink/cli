@@ -1,5 +1,6 @@
 import {
   DefaultApiUrl,
+  DefaultChatTimeoutMs,
   DefaultTimeoutMs,
   IdentifierRegex,
   LinkIdRegex,
@@ -99,6 +100,14 @@ export function ParseTimeoutMs(value) {
   return timeoutMs;
 }
 
+// The timeout of a chat request: the given one, else the longer chat default.
+export function ParseChatTimeoutMs(value) {
+  if (value === undefined || value === null || value === "") {
+    return DefaultChatTimeoutMs;
+  }
+  return ParseTimeoutMs(value);
+}
+
 // File ids: 24 hex characters, read case-insensitively like the API does.
 export function AssertIdentifier(value, label = "id") {
   const normalized = _asString(value).trim().toLowerCase();
@@ -186,5 +195,6 @@ export function ParseGlobalRuntimeOptions(options = {}) {
     apiKey: AssertApiKey(apiKeySource),
     apiUrl: ResolveFixedApiUrl(options.apiUrl),
     timeoutMs: ParseTimeoutMs(timeoutSource),
+    chatTimeoutMs: ParseChatTimeoutMs(timeoutSource),
   };
 }

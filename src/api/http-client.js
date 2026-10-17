@@ -156,6 +156,7 @@ export function CreateApiClient(options = {}) {
 
   const apiUrl = ResolveFixedApiUrl(options.apiUrl);
   const timeoutMs = ParseTimeoutMs(options.timeoutMs);
+  const chatTimeoutMs = ParseTimeoutMs(options.chatTimeoutMs ?? options.timeoutMs);
   const userAgent =
     typeof options.userAgent === "string" && options.userAgent.trim()
       ? options.userAgent.trim()
@@ -248,7 +249,7 @@ export function CreateApiClient(options = {}) {
         },
         apiKey,
         userAgent,
-        timeoutMs,
+        timeoutMs: chatTimeoutMs,
       });
     },
 

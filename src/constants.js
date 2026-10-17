@@ -1,5 +1,8 @@
 export const DefaultApiUrl = "https://api.wisylink.com";
 export const DefaultTimeoutMs = 30000;
+// A chat turn runs up to 75 s of model calls on the server and its nginx location waits 120 s, so without an
+// explicit --timeout / timeoutMs a chat request gets the maximum instead of the 30 s every other request gets.
+export const DefaultChatTimeoutMs = 120000;
 export const MinTimeoutMs = 1000;
 export const MaxTimeoutMs = 120000;
 export const MaxMessageLength = 5000;

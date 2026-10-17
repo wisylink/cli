@@ -139,6 +139,7 @@ export function CreateSessionClient(options = {}) {
 
   const apiUrl = ResolveFixedApiUrl(options.apiUrl);
   const timeoutMs = ParseTimeoutMs(options.timeoutMs ?? DefaultTimeoutMs);
+  const chatTimeoutMs = ParseTimeoutMs(options.chatTimeoutMs ?? options.timeoutMs ?? DefaultTimeoutMs);
   const userAgent =
     typeof options.userAgent === "string" && options.userAgent.trim()
       ? options.userAgent.trim()
@@ -228,6 +229,7 @@ export function CreateSessionClient(options = {}) {
         url: _joinApiUrl(apiUrl, `/internal/chat/${id}/message`),
         body: JSON.stringify(body),
         headers: { "content-type": "application/json" },
+        timeoutMs: chatTimeoutMs,
       });
     },
 

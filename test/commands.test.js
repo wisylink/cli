@@ -17,6 +17,8 @@ const realStderrWrite = process.stderr.write;
 const savedEnv = {};
 
 let calls;
+let lastTimerMs;
+const realSetTimeout = globalThis.setTimeout;
 let routes;
 let stdout;
 let stderr;
@@ -45,12 +47,18 @@ beforeEach(async () => {
   );
   process.env.XDG_CONFIG_HOME = configDir;
 
+  // Each request arms one abort timer just before it calls fetch; remember its delay.
+  globalThis.setTimeout = (fn, ms, ...rest) => {
+    lastTimerMs = ms;
+    return realSetTimeout(fn, ms, ...rest);
+  };
   globalThis.fetch = async (url, init = {}) => {
     const call = {
       url: String(url),
       method: init.method,
       headers: init.headers || {},
       body: init.body,
+      timeoutMs: lastTimerMs,
     };
     calls.push(call);
     for (const [method, path, respond] of routes) {
@@ -72,6 +80,7 @@ afterEach(async () => {
   process.stdout.write = realStdoutWrite;
   process.stderr.write = realStderrWrite;
   globalThis.fetch = realFetch;
+  globalThis.setTimeout = realSetTimeout;
   for (const [key, value] of Object.entries(savedEnv)) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
@@ -462,4 +471,28 @@ test("session chat output has no rejected_files when every file was attached", a
   assert.equal(await run("chat", "--message", "hi", "--link-id", LINK_ID, "--file-id", FILE_ID, "--json"), 0);
   assert.equal("rejected_files" in JSON.parse(stdout), false);
   assert.doesNotMatch(stdout, /Not attached/);
+});
+
+test("chat turns get a 120 s timeout by default and --timeout applies to every request", async () => {
+  on("POST", `/internal/chat/${LINK_ID}/message`, () => _json({ link_id: LINK_ID, building: false, text: "ok" }));
+  on("GET", `/internal/links/${LINK_ID}`, () => _json({ url: "" }));
+  on("POST", "/chat", () => _json({ id: LINK_ID, url: "", status: "completed", answer: "ok" }));
+  on("GET", `/links/${LINK_ID}`, () => _json({ id: LINK_ID }));
+  const chat = ["chat", "--message", "hi", "--link-id", LINK_ID, "--json"];
+
+  // login session
+  assert.equal(await run(...chat), 0);
+  assert.deepEqual(calls.map((call) => call.timeoutMs), [120000, 30000]);
+  calls.length = 0;
+  assert.equal(await run("--timeout", "5000", ...chat), 0);
+  assert.deepEqual(calls.map((call) => call.timeoutMs), [5000, 5000]);
+  calls.length = 0;
+
+  // API key
+  assert.equal(await run("--api-key", "k", ...chat), 0);
+  assert.equal(await run("--api-key", "k", "links", "get", LINK_ID, "--json"), 0);
+  assert.deepEqual(calls.map((call) => call.timeoutMs), [120000, 30000]);
+  calls.length = 0;
+  assert.equal(await run("--api-key", "k", "--timeout", "5000", ...chat), 0);
+  assert.deepEqual(calls.map((call) => call.timeoutMs), [5000]);
 });

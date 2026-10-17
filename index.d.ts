@@ -1,5 +1,6 @@
 export interface ClientOptions {
   apiKey?: string;
+  /** Request timeout in ms, 1000..120000. Default 30000; chat() defaults to 120000 */
   timeoutMs?: number;
   userAgent?: string;
 }

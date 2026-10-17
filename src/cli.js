@@ -57,7 +57,7 @@ function _renderHelp() {
     "Global flags:",
     "  --api-key <key>       Automation auth (bills to subscription limits)",
     "  --json                JSON on stdout (errors as JSON on stderr), no spinners or prompts",
-    "  --timeout <ms>        Request timeout in milliseconds (1000..120000)",
+    "  --timeout <ms>        Request timeout in ms (1000..120000; default 30000, chat 120000)",
     "  --help                Show help",
     "  --version             Show version",
     "",

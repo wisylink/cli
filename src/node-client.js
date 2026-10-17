@@ -1,4 +1,4 @@
-import { DefaultTimeoutMs } from "./constants.js";
+import { DefaultChatTimeoutMs, DefaultTimeoutMs } from "./constants.js";
 import { CreateApiClient } from "./api/http-client.js";
 import {
   AssertApiKey,
@@ -22,6 +22,10 @@ function _resolveClientOptions(options = {}) {
     apiKey,
     apiUrl,
     timeoutMs: options.timeoutMs ?? DefaultTimeoutMs,
+    // An explicit timeout covers chat turns too; otherwise they get the longer default.
+    chatTimeoutMs:
+      options.chatTimeoutMs ??
+      (options.timeoutMs !== undefined ? options.timeoutMs : DefaultChatTimeoutMs),
     userAgent: options.userAgent,
   };
 }
