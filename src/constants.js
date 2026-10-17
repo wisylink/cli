@@ -33,4 +33,6 @@ export const SupportedFileExtensions = [
   "txt",
   "json",
   "html",
+  "zip",
+  "wasm",
 ];
