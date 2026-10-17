@@ -1,5 +1,10 @@
 import { readFile, stat } from "node:fs/promises";
-import { DefaultApiUrl, DefaultTimeoutMs } from "../constants.js";
+import {
+  DefaultApiUrl,
+  DefaultListLimit,
+  DefaultTimeoutMs,
+  MaxSessionListLimit,
+} from "../constants.js";
 import { CliError } from "../runtime-error.js";
 import { NormalizeApiUrl, ParseTimeoutMs, ResolveFixedApiUrl } from "../validators.js";
 
@@ -28,6 +33,8 @@ function _extractApiMessage(payload, status) {
   if (payload && typeof payload.message === "string" && payload.message.trim()) {
     return payload.message.trim();
   }
+  // The session plane answers a bare {"error":"unauthorized"}: say what to do about it.
+  if (status === 401) return "Session expired or not valid. Run wisylink login again.";
   return `API request failed with status ${status}.`;
 }
 
@@ -247,7 +254,8 @@ export function CreateSessionClient(options = {}) {
     async listLinks({ page, limit, sortBy = "last_message_at", sortOrder = "desc" } = {}) {
       const query = new URLSearchParams();
       if (page !== undefined) query.set("page", String(page));
-      if (limit !== undefined) query.set("limit", String(limit));
+      // The session plane's own default is 10 and its cap 25; ask for the same 20 the API-key plane defaults to.
+      query.set("limit", String(Math.min(limit ?? DefaultListLimit, MaxSessionListLimit)));
       if (sortBy) query.set("sort_by", String(sortBy));
       if (sortOrder) query.set("sort_order", String(sortOrder));
       const suffix = query.toString() ? `?${query}` : "";

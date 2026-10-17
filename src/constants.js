@@ -6,6 +6,8 @@ export const MaxMessageLength = 5000;
 export const MaxFileIdsPerRequest = 10;
 export const MaxListLimit = 100;
 export const DefaultListLimit = 20;
+// A login session lists at most 25 links per page (GET /internal/links); the API-key plane allows MaxListLimit.
+export const MaxSessionListLimit = 25;
 
 // File ids are 24 lowercase hex characters (app.hex_id); the API reads them case-insensitively.
 export const IdentifierRegex = /^[a-f0-9]{24}$/;

@@ -353,3 +353,45 @@ test("api key chat tells the user when the build is queued or started", async ()
     assert.match(stdout, expected, status);
   }
 });
+
+test("session links list asks for 20 by default and never more than the session cap of 25", async () => {
+  const empty = { items: [], page: 1, limit: 20, total: 0, total_pages: 0, has_prev: false, has_next: false };
+  const urls = [];
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    return _json(empty);
+  };
+  assert.equal(await run("links", "list", "--json"), 0);
+  assert.equal(await run("links", "list", "--limit", "10", "--page", "3", "--json"), 0);
+  assert.equal(await run("links", "list", "--limit", "100", "--json"), 0);
+  assert.deepEqual(urls, [
+    `${API}/internal/links?limit=20&sort_by=last_message_at&sort_order=desc`,
+    `${API}/internal/links?page=3&limit=10&sort_by=last_message_at&sort_order=desc`,
+    `${API}/internal/links?limit=25&sort_by=last_message_at&sort_order=desc`,
+  ]);
+});
+
+test("api key links list passes page and limit through up to 100", async () => {
+  on("GET", "/links?page=2&limit=100", () => _json({ items: [], page: 2, limit: 100 }));
+  assert.equal(await run("--api-key", "key-1", "links", "list", "--page", "2", "--limit", "100", "--json"), 0);
+  assert.equal(await run("--api-key", "key-1", "links", "list", "--limit", "101", "--json"), 2);
+  assert.equal(calls.length, 1);
+});
+
+test("session 401 tells the user to log in again", async () => {
+  on("GET", `/internal/links/${LINK_ID}`, () => _json({ error: "unauthorized" }, 401));
+  assert.equal(await run("links", "get", LINK_ID), 1);
+  assert.match(stdout, /Session expired or not valid\. Run wisylink login again\./);
+
+  stderr = "";
+  assert.equal(await run("links", "get", LINK_ID, "--json"), 1);
+  assert.deepEqual(JSON.parse(stderr), { error: "unauthorized" });
+});
+
+test("api key 401 keeps the API's own message", async () => {
+  on("GET", `/links/${LINK_ID}`, () =>
+    _json({ error: "unauthorized", message: "Missing or invalid API key." }, 401),
+  );
+  assert.equal(await run("--api-key", "bad", "links", "get", LINK_ID), 1);
+  assert.match(stdout, /Missing or invalid API key\./);
+});
