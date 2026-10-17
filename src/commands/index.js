@@ -5,7 +5,15 @@ import { CreateApiClient } from "../api/http-client.js";
 import { CreateSessionClient, SessionUrl } from "../api/session-client.js";
 import { CreateWisyLinkClient } from "../node-client.js";
 import { CliError } from "../runtime-error.js";
-import { ParseGlobalRuntimeOptions } from "../validators.js";
+import {
+  AssertIdentifier,
+  AssertLinkId,
+  NormalizeFileIds,
+  NormalizeListLimit,
+  NormalizeListPage,
+  NormalizeMessage,
+  ParseGlobalRuntimeOptions,
+} from "../validators.js";
 import {
   bold,
   clearReportLines,
@@ -243,7 +251,14 @@ async function _runApiChat({ client, message, fileIds, linkId, json }) {
   return result;
 }
 
-async function _chatRepl({ auth, json }) {
+// `readLine` replaces the terminal prompt (tests); it resolves to the next line, or undefined at end of input.
+export async function ChatRepl({
+  auth,
+  json,
+  linkId: initialLinkId = "",
+  fileIds: initialFileIds = [],
+  readLine,
+}) {
   if (json) {
     throw new CliError({
       code: "usage_error",
@@ -262,12 +277,19 @@ async function _chatRepl({ auth, json }) {
   println(info("Interactive chat. Empty line or Ctrl+D to exit. Ctrl+C stops an active build."));
   newline();
 
-  let linkId = "";
-  const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-  const prompt = () =>
-    new Promise((resolve) => {
-      rl.question(`${green("›")} `, resolve);
-    });
+  // --link-id continues that link; --file-id attaches to the first turn only.
+  let linkId = initialLinkId;
+  let pendingFileIds = initialFileIds;
+  if (linkId) println(info(`Continuing link ${bold(linkId)}.`));
+  const rl = readLine
+    ? null
+    : createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  const prompt =
+    readLine ||
+    (() =>
+      new Promise((resolve) => {
+        rl.question(`${green("›")} `, resolve);
+      }));
 
   try {
     while (true) {
@@ -279,6 +301,7 @@ async function _chatRepl({ auth, json }) {
         const turn = await _runSessionChatTurn({
           client: auth.client,
           message,
+          fileIds: pendingFileIds,
           linkId,
           json: false,
         });
@@ -287,15 +310,17 @@ async function _chatRepl({ auth, json }) {
         const turn = await _runApiChat({
           client: auth.client,
           message,
+          fileIds: pendingFileIds,
           linkId,
           json: false,
         });
         linkId = turn?.id || linkId;
       }
+      pendingFileIds = [];
       newline();
     }
   } finally {
-    rl.close();
+    rl?.close();
   }
 
   return { ok: true, link_id: linkId || null };
@@ -355,14 +380,27 @@ export async function ExecuteWhoami(command, version) {
   return null;
 }
 
+// The same input rules as the Node client, applied before any request and whatever the auth mode: a login
+// session talks to /internal/chat, which would otherwise accept an 11th file id by silently dropping it.
+function _validateChatArgs(args) {
+  return {
+    message: args.message === undefined ? undefined : NormalizeMessage(args.message),
+    fileIds: NormalizeFileIds(args.fileIds),
+    linkId: args.linkId === undefined ? undefined : AssertLinkId(args.linkId, "--link-id"),
+  };
+}
+
 export async function ExecuteChat(command, version) {
+  const { message, fileIds, linkId } = _validateChatArgs(command.args);
   const auth = await _resolveAuth(command, version);
-  const message = command.args.message;
-  const fileIds = command.args.fileIds || [];
-  const linkId = command.args.linkId;
 
   if (!message) {
-    return _chatRepl({ auth, json: command.global.json });
+    return ChatRepl({
+      auth,
+      json: command.global.json,
+      linkId: linkId || "",
+      fileIds,
+    });
   }
 
   if (auth.mode === "session") {
@@ -387,18 +425,15 @@ export async function ExecuteChat(command, version) {
 }
 
 export async function ExecuteFiles(command, version) {
+  const id =
+    command.name === "files.upload" ? undefined : AssertIdentifier(command.args.id, "file id");
   const auth = await _resolveAuth(command, version);
   let output;
 
-  if (auth.mode === "session") {
-    if (command.name === "files.upload") output = await auth.client.uploadFile(command.args.path);
-    else if (command.name === "files.get") output = await auth.client.getFile(command.args.id);
-    else if (command.name === "files.delete") output = await auth.client.deleteFile(command.args.id);
-  } else {
-    if (command.name === "files.upload") output = await auth.client.uploadFile(command.args.path);
-    else if (command.name === "files.get") output = await auth.client.getFile(command.args.id);
-    else if (command.name === "files.delete") output = await auth.client.deleteFile(command.args.id);
-  }
+  // Both clients expose the same upload/get/delete methods.
+  if (command.name === "files.upload") output = await auth.client.uploadFile(command.args.path);
+  else if (command.name === "files.get") output = await auth.client.getFile(id);
+  else if (command.name === "files.delete") output = await auth.client.deleteFile(id);
 
   if (command.global.json || !isInteractive()) _writeJson(output);
   else if (command.name === "files.upload") println(success(`Uploaded ${bold(output.id)}`));
@@ -408,27 +443,21 @@ export async function ExecuteFiles(command, version) {
 }
 
 export async function ExecuteLinks(command, version) {
+  const isList = command.name === "links.list";
+  const id = isList ? undefined : AssertLinkId(command.args.id, "link id");
+  const list = isList
+    ? {
+        page: NormalizeListPage(command.args.page),
+        limit: NormalizeListLimit(command.args.limit),
+      }
+    : undefined;
   const auth = await _resolveAuth(command, version);
   let output;
 
-  if (auth.mode === "session") {
-    if (command.name === "links.list") {
-      output = await auth.client.listLinks({
-        page: command.args.page,
-        limit: command.args.limit,
-      });
-    } else if (command.name === "links.get") {
-      output = await auth.client.getLink(command.args.id);
-    } else if (command.name === "links.delete") {
-      output = await auth.client.deleteLink(command.args.id);
-    }
-  } else if (command.name === "links.list") {
-    output = await auth.client.listLinks(command.args);
-  } else if (command.name === "links.get") {
-    output = await auth.client.getLink(command.args.id);
-  } else if (command.name === "links.delete") {
-    output = await auth.client.deleteLink(command.args.id);
-  }
+  // Both clients expose the same list/get/delete methods.
+  if (isList) output = await auth.client.listLinks(list);
+  else if (command.name === "links.get") output = await auth.client.getLink(id);
+  else if (command.name === "links.delete") output = await auth.client.deleteLink(id);
 
   if (command.global.json || !isInteractive()) _writeJson(output);
   else if (command.name === "links.delete") println(success("Deleted."));

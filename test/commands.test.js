@@ -1,0 +1,257 @@
+import test, { afterEach, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { RunCli } from "../src/cli.js";
+import { ChatRepl } from "../src/commands/index.js";
+
+const LINK_ID = "k3x9a2";
+const FILE_ID = "67e6f6e6c5a91e4d2d9b0a11";
+const API = "https://api.wisylink.com";
+
+const realFetch = globalThis.fetch;
+const realStdoutWrite = process.stdout.write;
+const realStderrWrite = process.stderr.write;
+const savedEnv = {};
+
+let calls;
+let routes;
+let stdout;
+let stderr;
+let configDir;
+
+function _json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+beforeEach(async () => {
+  calls = [];
+  routes = [];
+  stdout = "";
+  stderr = "";
+  for (const key of ["XDG_CONFIG_HOME", "WISYLINK_API_KEY"]) savedEnv[key] = process.env[key];
+  delete process.env.WISYLINK_API_KEY;
+
+  configDir = await mkdtemp(join(tmpdir(), "wisylink-cli-test-"));
+  await mkdir(join(configDir, "wisylink"), { recursive: true });
+  await writeFile(
+    join(configDir, "wisylink", "credentials.json"),
+    JSON.stringify({ token: "session-token", user: { email: "dev@example.com" } }),
+  );
+  process.env.XDG_CONFIG_HOME = configDir;
+
+  globalThis.fetch = async (url, init = {}) => {
+    const call = {
+      url: String(url),
+      method: init.method,
+      headers: init.headers || {},
+      body: init.body,
+    };
+    calls.push(call);
+    for (const [method, path, respond] of routes) {
+      if (call.method === method && call.url === `${API}${path}`) return respond(call);
+    }
+    return _json({ error: "not_found" }, 404);
+  };
+  process.stdout.write = (chunk) => {
+    stdout += String(chunk);
+    return true;
+  };
+  process.stderr.write = (chunk) => {
+    stderr += String(chunk);
+    return true;
+  };
+});
+
+afterEach(async () => {
+  process.stdout.write = realStdoutWrite;
+  process.stderr.write = realStderrWrite;
+  globalThis.fetch = realFetch;
+  for (const [key, value] of Object.entries(savedEnv)) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+  await rm(configDir, { recursive: true, force: true });
+});
+
+function on(method, path, respond) {
+  routes.push([method, path, respond]);
+}
+
+async function run(...argv) {
+  return RunCli(argv);
+}
+
+// The REPL only starts on a terminal; pretend to be one while `fn` runs.
+async function withTty(fn) {
+  const stdinTty = process.stdin.isTTY;
+  const stdoutTty = process.stdout.isTTY;
+  process.stdin.isTTY = true;
+  process.stdout.isTTY = true;
+  try {
+    return await fn();
+  } finally {
+    process.stdin.isTTY = stdinTty;
+    process.stdout.isTTY = stdoutTty;
+  }
+}
+
+test("session: links get/delete take a real 6-character link id", async () => {
+  on("GET", `/internal/links/${LINK_ID}`, () => _json({ id: LINK_ID, status: "completed" }));
+  on("DELETE", `/internal/links/${LINK_ID}`, () => _json({ ok: true }));
+
+  assert.equal(await run("links", "get", LINK_ID, "--json"), 0);
+  assert.equal(JSON.parse(stdout).id, LINK_ID);
+  assert.equal(calls[0].headers.authorization, "Bearer session-token");
+
+  assert.equal(await run("links", "delete", LINK_ID, "--json"), 0);
+  assert.deepEqual(
+    calls.map((call) => `${call.method} ${call.url}`),
+    [`GET ${API}/internal/links/${LINK_ID}`, `DELETE ${API}/internal/links/${LINK_ID}`],
+  );
+});
+
+test("session: garbage link ids are rejected before any request", async () => {
+  for (const id of [FILE_ID, "K3X9A2", "k3x9a", "../chat/new", "k3x-a2"]) {
+    stderr = "";
+    assert.equal(await run("links", "get", id, "--json"), 2, id);
+    assert.equal(JSON.parse(stderr).error, "usage_error");
+    assert.match(JSON.parse(stderr).message, /6 lowercase letters or digits/);
+    assert.equal(await run("links", "delete", id, "--json"), 2, id);
+  }
+  assert.equal(calls.length, 0);
+});
+
+test("session: file ids are checked before any request", async () => {
+  on("GET", `/internal/files/${FILE_ID}`, () => _json({ id: FILE_ID }));
+  assert.equal(await run("files", "get", FILE_ID.toUpperCase(), "--json"), 0);
+  assert.equal(calls[0].url, `${API}/internal/files/${FILE_ID}`);
+
+  for (const id of [LINK_ID, "../x", "nope"]) {
+    assert.equal(await run("files", "get", id, "--json"), 2, id);
+    assert.equal(await run("files", "delete", id, "--json"), 2, id);
+  }
+  assert.equal(calls.length, 1);
+});
+
+test("session: chat continues a link with its real id and file ids", async () => {
+  on("POST", `/internal/chat/${LINK_ID}/message`, () =>
+    _json({ link_id: LINK_ID, building: false, text: "Done." }),
+  );
+  on("GET", `/internal/links/${LINK_ID}`, () => _json({ id: LINK_ID, url: `https://${LINK_ID}.wisylink.com` }));
+
+  const code = await run(
+    "chat",
+    "--message",
+    "Make the hero darker.",
+    "--link-id",
+    LINK_ID,
+    "--file-id",
+    FILE_ID,
+    "--json",
+  );
+  assert.equal(code, 0);
+  assert.deepEqual(JSON.parse(calls[0].body), { content: "Make the hero darker.", file_ids: [FILE_ID] });
+  assert.deepEqual(JSON.parse(stdout), {
+    id: LINK_ID,
+    url: `https://${LINK_ID}.wisylink.com`,
+    session_url: `https://wisylink.com/chat/${LINK_ID}`,
+    building: false,
+    answer: "Done.",
+  });
+});
+
+test("session: chat enforces link id, file id count and message length up front", async () => {
+  const elevenFiles = Array.from({ length: 11 }, (_, i) => ["--file-id", i.toString(16).padStart(24, "0")]).flat();
+
+  assert.equal(await run("chat", "--message", "hi", "--link-id", FILE_ID, "--json"), 2);
+  assert.match(JSON.parse(stderr).message, /--link-id must be 6 lowercase/);
+
+  stderr = "";
+  assert.equal(await run("chat", "--message", "hi", ...elevenFiles, "--json"), 2);
+  assert.match(JSON.parse(stderr).message, /at most 10/);
+
+  stderr = "";
+  assert.equal(await run("chat", "--message", "a".repeat(5001), "--json"), 2);
+  assert.match(JSON.parse(stderr).message, /max 5000/);
+
+  stderr = "";
+  assert.equal(await run("chat", "--message", "   ", "--json"), 2);
+  assert.match(JSON.parse(stderr).message, /message is required/);
+
+  assert.equal(calls.length, 0);
+});
+
+test("api key: links get/delete and chat use the key plane with real link ids", async () => {
+  on("GET", `/links/${LINK_ID}`, () => _json({ id: LINK_ID }));
+  on("DELETE", `/links/${LINK_ID}`, () => _json({ ok: true }));
+  on("POST", "/chat", () =>
+    _json({ id: LINK_ID, url: `https://${LINK_ID}.wisylink.com`, status: "completed", answer: "ok" }, 200),
+  );
+
+  assert.equal(await run("--api-key", "key-1", "links", "get", LINK_ID, "--json"), 0);
+  assert.equal(await run("--api-key", "key-1", "links", "delete", LINK_ID, "--json"), 0);
+  assert.equal(
+    await run("--api-key", "key-1", "chat", "--message", "hi", "--link-id", LINK_ID, "--json"),
+    0,
+  );
+  assert.equal(calls.length, 3);
+  for (const call of calls) assert.equal(call.headers["x-api-key"], "key-1");
+  assert.equal(JSON.parse(calls[2].body).id, LINK_ID);
+});
+
+test("repl: --link-id continues that link and --file-id rides the first turn only", async () => {
+  const sent = [];
+  const client = {
+    async chatMessage(input) {
+      sent.push(input);
+      return { link_id: LINK_ID, building: false, text: "ok" };
+    },
+    async getLink() {
+      return { url: `https://${LINK_ID}.wisylink.com` };
+    },
+  };
+  const lines = ["first", "second", ""];
+  const result = await withTty(() =>
+    ChatRepl({
+      auth: { mode: "session", client },
+      json: false,
+      linkId: LINK_ID,
+      fileIds: [FILE_ID],
+      readLine: async () => lines.shift(),
+    }),
+  );
+  assert.equal(result.link_id, LINK_ID);
+  assert.deepEqual(
+    sent.map((turn) => [turn.linkId, turn.content, turn.fileIds]),
+    [
+      [LINK_ID, "first", [FILE_ID]],
+      [LINK_ID, "second", []],
+    ],
+  );
+});
+
+test("repl: without --link-id the first turn starts a new link and later turns continue it", async () => {
+  const sent = [];
+  const client = {
+    async chatMessage(input) {
+      sent.push(input);
+      return { link_id: LINK_ID, building: false, text: "ok" };
+    },
+    async getLink() {
+      return { url: "" };
+    },
+  };
+  const lines = ["one", "two", ""];
+  await withTty(() =>
+    ChatRepl({ auth: { mode: "session", client }, json: false, readLine: async () => lines.shift() }),
+  );
+  assert.deepEqual(
+    sent.map((turn) => turn.linkId),
+    ["", LINK_ID],
+  );
+});
