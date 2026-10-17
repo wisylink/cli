@@ -58,3 +58,19 @@ test("--help documents --json and both id formats", async () => {
   assert.match(help, /6 characters, lowercase a-z0-9/);
   assert.match(help, /24 hex characters/);
 });
+
+test("--version prints the package version", async () => {
+  const { version } = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  let out = "";
+  const write = process.stdout.write;
+  process.stdout.write = (chunk) => {
+    out += String(chunk);
+    return true;
+  };
+  try {
+    assert.equal(await RunCli(["--version"]), 0);
+  } finally {
+    process.stdout.write = write;
+  }
+  assert.equal(out.trim(), version);
+});

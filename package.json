@@ -1,6 +1,6 @@
 {
   "name": "@wisylink/cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Official WisyLink coding-agent CLI — device login, chat, files, and links.",
   "type": "module",
   "main": "./index.js",
