@@ -17,6 +17,8 @@ import {
   ParseGlobalRuntimeOptions,
 } from "../validators.js";
 import {
+  Clean,
+  SafeJson,
   bold,
   clearReportLines,
   countReportLines,
@@ -42,7 +44,7 @@ function _userAgent(version) {
 function _writeJson(value) {
   const payload =
     value && typeof value === "object" && !Array.isArray(value) ? value : { value };
-  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+  process.stdout.write(`${SafeJson(payload)}\n`);
 }
 
 async function _resolveAuth(command, version) {
@@ -198,11 +200,11 @@ async function _runSessionChatTurn({ client, message, fileIds, linkId, json }) {
   if (output.answer) {
     newline();
     println(`${bold("Wisy")}`);
-    println(output.answer);
+    println(Clean(output.answer, { multiline: true }));
   }
 
   if (rejectedFiles.length) {
-    println(warn(`Not attached (storage quota exceeded): ${rejectedFiles.join(", ")}`));
+    println(warn(`Not attached (storage quota exceeded): ${Clean(rejectedFiles.join(", "))}`));
   }
 
   printSessionUrls({ sessionUrl, hostedUrl });
@@ -252,7 +254,7 @@ async function _runApiChat({ client, message, fileIds, linkId, json }) {
   if (result?.answer) {
     newline();
     println(`${bold("Wisy")}`);
-    println(result.answer);
+    println(Clean(result.answer, { multiline: true }));
   }
   printSessionUrls({
     sessionUrl: SessionUrl(result?.id),
@@ -260,7 +262,7 @@ async function _runApiChat({ client, message, fileIds, linkId, json }) {
   });
   if (IsBuildActive(result?.status)) {
     const verb = result.status === BuildStatus.Queued ? "queued" : "started";
-    println(yellow(`Build ${verb}. Check its status with: wisylink links get ${result.id}`));
+    println(yellow(`Build ${verb}. Check its status with: wisylink links get ${Clean(result.id)}`));
   }
   return result;
 }
@@ -350,19 +352,47 @@ export async function ExecuteLogin(command, version) {
   return null;
 }
 
-export async function ExecuteLogout(command) {
+// Ends the session on the server first, then removes the local file: a copy of the token left anywhere (a backup,
+// another disk) stops working too. A session the API already ended (401) counts as revoked.
+export async function ExecuteLogout(command, version) {
+  let credentials = null;
+  try {
+    credentials = await ReadCredentials();
+  } catch {
+    // an unreadable file is still removed below
+  }
+  let revoked = null;
+  let reason = "";
+  if (credentials?.token) {
+    try {
+      const client = CreateSessionClient({
+        token: credentials.token,
+        timeoutMs: command.global.timeoutMs,
+        userAgent: _userAgent(version),
+      });
+      await client.revokeSession();
+      revoked = true;
+    } catch (error) {
+      revoked = error?.details?.status === 401;
+      if (!revoked) reason = Clean(error?.message || "unknown error");
+    }
+  }
   await ClearCredentials();
-  if (command.global.json) _writeJson({ ok: true });
-  else println(success("Logged out."));
+  if (command.global.json) _writeJson({ ok: true, session_revoked: revoked });
+  else if (revoked === false) {
+    println(warn(`Logged out on this machine, but the session could not be ended on the server (${reason}).`));
+    println(dim("End it under Sessions on wisylink.com."));
+  } else println(success("Logged out."));
   return null;
 }
 
 export async function ExecuteWhoami(command, version) {
   const auth = await _resolveAuth(command, version);
   if (auth.mode === "apikey") {
-    const payload = { mode: "api_key", message: "Authenticated with API key." };
+    // whoami has no API-key endpoint to ask, so it says what it knows: a key is set, not that the API accepts it.
+    const payload = { mode: "api_key", message: "API key set (not verified; any command checks it)." };
     if (command.global.json) _writeJson(payload);
-    else println(info("Authenticated with API key."));
+    else println(info(payload.message));
     return null;
   }
 
@@ -389,7 +419,7 @@ export async function ExecuteWhoami(command, version) {
 
   if (command.global.json) _writeJson(payload);
   else if (payload.user?.email || payload.user?.name) {
-    println(success(`Signed in as ${bold(payload.user.email || payload.user.name)}`));
+    println(success(`Signed in as ${bold(Clean(payload.user.email || payload.user.name))}`));
   } else {
     println(info("Signed in (session token present)."));
   }
@@ -452,7 +482,7 @@ export async function ExecuteFiles(command, version) {
   else if (command.name === "files.delete") output = await auth.client.deleteFile(id);
 
   if (command.global.json || !isInteractive()) _writeJson(output);
-  else if (command.name === "files.upload") println(success(`Uploaded ${bold(output.id)}`));
+  else if (command.name === "files.upload") println(success(`Uploaded ${bold(Clean(output.id))}`));
   else if (command.name === "files.delete") println(success("Deleted."));
   else _writeJson(output);
   return null;

@@ -9,7 +9,7 @@ import {
   ExecuteWhoami,
 } from "./commands/index.js";
 import { CliError } from "./runtime-error.js";
-import { dim, failure, isTty, println } from "./ui/tty.js";
+import { Clean, SafeJson, dim, failure, isTty, println } from "./ui/tty.js";
 
 const requireModule = createRequire(import.meta.url);
 const packageJson = requireModule("../package.json");
@@ -22,7 +22,7 @@ function _writeJson(value, stream) {
     value && typeof value === "object" && !Array.isArray(value)
       ? value
       : { value };
-  target.write(`${JSON.stringify(payload, null, 2)}\n`);
+  target.write(`${SafeJson(payload)}\n`);
 }
 
 function _renderHelp() {
@@ -55,7 +55,8 @@ function _renderHelp() {
     "  file id               24 hex characters (as printed by files upload)",
     "",
     "Global flags:",
-    "  --api-key <key>       Automation auth (bills to subscription limits)",
+    "  --api-key <key>       Automation auth (bills to subscription limits); visible in the",
+    "                        process list, so prefer the WISYLINK_API_KEY variable",
     "  --json                JSON on stdout (errors as JSON on stderr), no spinners or prompts",
     "  --timeout <ms>        Request timeout in ms (1000..120000; default 30000, chat 120000)",
     "  --help                Show help",
@@ -100,8 +101,9 @@ function _printHumanError(error) {
     typeof payload.message === "string" && payload.message.trim()
       ? payload.message.trim()
       : error?.message || "Unexpected CLI error.";
-  println(failure(message));
-  if (payload.error && isTty()) println(dim(`code: ${payload.error}`));
+  // An error message can come from the API, so it is printed like any other server text.
+  println(failure(Clean(message)));
+  if (payload.error && isTty()) println(dim(`code: ${Clean(payload.error)}`));
 }
 
 async function _dispatch(parsed) {

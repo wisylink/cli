@@ -1,6 +1,6 @@
 import test, { afterEach, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { RunCli } from "../src/cli.js";
@@ -533,4 +533,95 @@ test("login without --json prints the code for the user", async () => {
   assert.match(stdout, /ABCD-2345/);
   assert.match(stdout, /user_code=ABCD-2345/);
   assert.equal(stderr, "");
+});
+
+test("login opens and prints only its own approval URL, whatever the API sends", async () => {
+  on("POST", "/cli/device/code", () =>
+    _json({
+      device_code: "device-code",
+      user_code: "ABCD-2345",
+      verification_uri: "file:///System/Applications/Calculator.app",
+      verification_uri_complete: "https://evil.example/phish?x=1&calc.exe",
+      interval: 1,
+      expires_in: 86400,
+    }),
+  );
+  on("POST", "/cli/device/token", () => _json({ token: "new-token", user: { email: "grace@example.com" } }));
+  assert.equal(await withTty(() => run("login", "--json"), false), 0);
+  const pending = JSON.parse(stderr);
+  assert.equal(pending.verification_uri, "https://wisylink.com/cli/authorize");
+  assert.equal(pending.verification_uri_complete, "https://wisylink.com/cli/authorize?user_code=ABCD-2345");
+  assert.equal(pending.expires_in, 900, "a longer expiry than the API's 15 minutes is not waited for");
+  assert.doesNotMatch(stderr + stdout, /evil|Calculator/);
+});
+
+test("login refuses a user code that is not the API's format", async () => {
+  for (const userCode of ["ABCD-2345&calc", "abcd-2345", "--background", "ABCD2345", "ABCD-234O"]) {
+    routes = [];
+    calls = [];
+    stderr = "";
+    on("POST", "/cli/device/code", () =>
+      _json({ device_code: "device-code", user_code: userCode, verification_uri: "https://wisylink.com/cli/authorize" }),
+    );
+    assert.equal(await withTty(() => run("login", "--json"), false), 1, userCode);
+    assert.equal(JSON.parse(stderr).error, "auth_error", userCode);
+    assert.equal(calls.length, 1, `${userCode}: no polling`);
+  }
+});
+
+test("server text reaches the terminal without control sequences", async () => {
+  const hostile = "Done.\u001b]52;c;ZXZpbA==\u0007\u001b[2J\u009b31m\u202Eevil\r\nNext line";
+  on("POST", `/internal/chat/${LINK_ID}/message`, () => _json({ link_id: LINK_ID, building: false, text: hostile }));
+  on("GET", `/internal/links/${LINK_ID}`, () => _json({ id: LINK_ID, url: `https://${LINK_ID}.wisylink.com/\u001b]0;pwned\u0007` }));
+
+  assert.equal(await withTty(() => run("chat", "--message", "hi", "--link-id", LINK_ID), false), 0);
+  assert.doesNotMatch(stdout, /[\u001b\u0007\u009b\u202E\r]/);
+  assert.match(stdout, /Done\.\]52;c;ZXZpbA==\[2J31mevil\nNext line/);
+
+  stdout = "";
+  assert.equal(await run("chat", "--message", "hi", "--link-id", LINK_ID, "--json"), 0);
+  assert.doesNotMatch(stdout, /[\u007f-\u009f\u202E]/);
+  assert.equal(JSON.parse(stdout).answer, hostile, "JSON keeps the exact text, escaped");
+});
+
+test("an API error message is printed without control sequences", async () => {
+  on("GET", `/internal/links/${LINK_ID}`, () => _json({ error: "x", message: "Gone\u001b[2J\u001b]0;t\u0007" }, 500));
+  assert.equal(await withTty(() => run("links", "get", LINK_ID), false), 1);
+  assert.doesNotMatch(stdout, /[\u001b\u0007]/);
+});
+
+test("logout ends the session on the server, then removes the file", async () => {
+  on("POST", "/internal/sessions", () => _json({ status: true, revoked: 1 }));
+  assert.equal(await run("logout", "--json"), 0);
+  assert.deepEqual(JSON.parse(stdout), { ok: true, session_revoked: true });
+  assert.equal(calls[0].headers.authorization, "Bearer session-token");
+  assert.deepEqual(JSON.parse(calls[0].body), { action: "revoke_current" });
+  await assert.rejects(stat(join(configDir, "wisylink", "credentials.json")), { code: "ENOENT" });
+});
+
+test("logout says when the server could not end the session, and still removes the file", async () => {
+  on("POST", "/internal/sessions", () => _json({ error: "server_error", message: "down" }, 503));
+  assert.equal(await withTty(() => run("logout"), false), 0);
+  assert.match(stdout, /could not be ended on the server/);
+  await assert.rejects(stat(join(configDir, "wisylink", "credentials.json")), { code: "ENOENT" });
+
+  stdout = "";
+  calls = [];
+  assert.equal(await run("logout", "--json"), 0, "nothing saved: nothing to revoke");
+  assert.deepEqual(JSON.parse(stdout), { ok: true, session_revoked: null });
+  assert.equal(calls.length, 0);
+});
+
+test("the API clients never follow a redirect", async () => {
+  on("GET", `/internal/links/${LINK_ID}`, () => _json({ id: LINK_ID }));
+  on("GET", `/links/${LINK_ID}`, () => _json({ id: LINK_ID }));
+  const seen = [];
+  const routed = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    seen.push(init.redirect);
+    return routed(url, init);
+  };
+  assert.equal(await run("links", "get", LINK_ID, "--json"), 0);
+  assert.equal(await run("links", "get", LINK_ID, "--api-key", "k", "--json"), 0);
+  assert.deepEqual(seen, ["error", "error"]);
 });

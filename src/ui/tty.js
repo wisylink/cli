@@ -10,6 +10,26 @@ const _BLUE = "\x1b[34m";
 
 const _FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
+// Text from the API or the model reaches the terminal only through Clean: C0 controls but newline and tab, DEL, C1,
+// the Unicode line and paragraph separators and the bidi controls are removed, so a reply cannot move the cursor,
+// clear the screen, retitle the terminal, write the clipboard (OSC 52) or reorder what the user reads. A one-line
+// field also folds newlines and tabs into a space, which keeps the report's line count true.
+const _UNSAFE_TEXT = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069]/g;
+// JSON.stringify escapes C0 but leaves these raw; escaped, a JSON consumer still gets the exact text.
+const _UNSAFE_JSON = /[\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069]/g;
+
+export function Clean(text, { multiline = false } = {}) {
+  const value = String(text ?? "").replace(_UNSAFE_TEXT, "");
+  return multiline ? value : value.replace(/[\t\n]+/g, " ");
+}
+
+export function SafeJson(value) {
+  return JSON.stringify(value, null, 2).replace(
+    _UNSAFE_JSON,
+    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+}
+
 export function isTty() {
   return Boolean(process.stdout.isTTY);
 }
@@ -92,8 +112,8 @@ export function printBanner(title) {
 export function printSessionUrls({ sessionUrl, hostedUrl }) {
   newline();
   println(`${bold(cyan("╭─ session"))}`);
-  if (sessionUrl) println(`${cyan("│")}  ${bold("Chat")}    ${cyan(sessionUrl)}`);
-  if (hostedUrl) println(`${cyan("│")}  ${bold("Preview")} ${cyan(hostedUrl)}`);
+  if (sessionUrl) println(`${cyan("│")}  ${bold("Chat")}    ${cyan(Clean(sessionUrl))}`);
+  if (hostedUrl) println(`${cyan("│")}  ${bold("Preview")} ${cyan(Clean(hostedUrl))}`);
   println(`${cyan("╰────────────────────────────────────────")}`);
   newline();
 }
@@ -151,7 +171,7 @@ export function createSpinner(label = "") {
 export function renderReport(report, { status } = {}) {
   if (!report || typeof report !== "object") return;
 
-  const note = typeof report.note === "string" ? report.note.trim() : "";
+  const note = typeof report.note === "string" ? Clean(report.note).trim() : "";
   const tasks = Array.isArray(report.tasks) ? report.tasks : [];
 
   if (status) {
@@ -169,7 +189,7 @@ export function renderReport(report, { status } = {}) {
   if (note) println(`${dim("note")}  ${note}`);
 
   for (const task of tasks) {
-    const text = typeof task?.text === "string" ? task.text : String(task || "");
+    const text = Clean(typeof task?.text === "string" ? task.text : String(task || "")).trim();
     if (!text) continue;
     if (task?.done === true) {
       const mark = task.success === false ? red("✗") : green("✓");
@@ -191,8 +211,10 @@ export function countReportLines(report, { status } = {}) {
   let lines = 0;
   if (status) lines += 1;
   if (report && typeof report === "object") {
-    if (typeof report.note === "string" && report.note.trim()) lines += 1;
-    if (Array.isArray(report.tasks)) lines += report.tasks.filter((t) => t?.text).length;
+    if (typeof report.note === "string" && Clean(report.note).trim()) lines += 1;
+    if (Array.isArray(report.tasks)) {
+      lines += report.tasks.filter((t) => Clean(typeof t?.text === "string" ? t.text : String(t || "")).trim()).length;
+    }
   }
   return lines;
 }

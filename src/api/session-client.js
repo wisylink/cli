@@ -4,6 +4,7 @@ import {
   DefaultListLimit,
   DefaultTimeoutMs,
   MaxSessionListLimit,
+  MaxUploadBytes,
 } from "../constants.js";
 import { CliError } from "../runtime-error.js";
 import { NormalizeApiUrl, ParseTimeoutMs, ResolveFixedApiUrl } from "../validators.js";
@@ -65,6 +66,14 @@ async function _readUploadSource(filePath) {
     });
   }
 
+  if (fileStats.size > MaxUploadBytes) {
+    throw new CliError({
+      code: "usage_error",
+      message: `File is larger than ${MaxUploadBytes / 1024 / 1024} MB: ${safePath}`,
+      exitCode: 2,
+    });
+  }
+
   const buffer = await readFile(safePath);
   if (!buffer.length) {
     throw new CliError({ code: "usage_error", message: "Upload file is empty.", exitCode: 2 });
@@ -90,6 +99,8 @@ async function _requestJson({ token, userAgent, timeoutMs, ...request }) {
       headers,
       body: request.body,
       signal: controller.signal,
+      // The API never redirects; following one would send the credential to whatever host it names.
+      redirect: "error",
     });
 
     const payload = await _readResponseJson(response);
@@ -153,7 +164,7 @@ export function CreateSessionClient(options = {}) {
         method: "GET",
         url: _joinApiUrl(apiUrl || DefaultApiUrl, "/auth/get-session"),
       });
-      // Better Auth answers 200 with a `null` body for a session that has ended or never existed.
+      // The API answers 200 with a `null` body for a session that has ended or never existed.
       if (!payload?.user || typeof payload.user !== "object") {
         throw new CliError({ code: "auth_error", message: SessionInvalidMessage, exitCode: 1 });
       }
@@ -230,6 +241,16 @@ export function CreateSessionClient(options = {}) {
         body: JSON.stringify(body),
         headers: { "content-type": "application/json" },
         timeoutMs: chatTimeoutMs,
+      });
+    },
+
+    // Ends this login session on the server (`wisylink logout`); the account's other sessions stay.
+    async revokeSession() {
+      return request({
+        method: "POST",
+        url: _joinApiUrl(apiUrl, "/internal/sessions"),
+        body: JSON.stringify({ action: "revoke_current" }),
+        headers: { "content-type": "application/json" },
       });
     },
 

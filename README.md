@@ -20,7 +20,9 @@ npm i -g @wisylink/cli
 wisylink login
 ```
 
-Opens a browser device-authorization flow (`https://wisylink.com/cli/authorize`). Credentials are stored at `~/.config/wisylink/credentials.json` with mode `0600`. Works for every plan, including Community.
+Opens a browser device-authorization flow (`https://wisylink.com/cli/authorize`). Approve only a code you just started with `wisylink login` in your own terminal. Credentials are stored at `~/.config/wisylink/credentials.json` (or under an absolute `$XDG_CONFIG_HOME`) with mode `0600` in a `0700` directory; on Windows the file is private through your user profile's permissions. Works for every plan, including Community.
+
+`wisylink logout` ends the session on the server and removes the local file.
 
 ```bash
 wisylink whoami
@@ -33,15 +35,16 @@ API keys still work for scripts. Usage bills against your subscription limits.
 
 ```bash
 export WISYLINK_API_KEY="your_api_key"
-# or
-wisylink links list --api-key "your_api_key" --json
+wisylink links list --json
 ```
+
+Keep your API key out of shell history and version control: set `WISYLINK_API_KEY` from your CI's secret store. A value passed with `--api-key` is visible to other users of the machine in the process list.
 
 ## Global Flags
 
 | Flag | Type | Description |
 | --- | --- | --- |
-| `--api-key <value>` | `string` | Override `WISYLINK_API_KEY` (automation) |
+| `--api-key <value>` | `string` | Override `WISYLINK_API_KEY` (automation; visible in the process list, prefer the variable) |
 | `--json` | `boolean` | JSON on stdout, errors as JSON on stderr; no spinners (see [Output](#output)) |
 | `--timeout <ms>` | `number` | Request timeout (`1000..120000`). Default `30000`; a chat turn defaults to `120000` |
 | `--help` | `boolean` | Show command help |
@@ -103,7 +106,8 @@ After each turn the CLI prints the session URL (`https://wisylink.com/chat/<id>`
 Automation:
 
 ```bash
-wisylink chat --message "…" --api-key "$WISYLINK_API_KEY" --json
+# WISYLINK_API_KEY comes from the CI secret store
+wisylink chat --message "…" --json
 ```
 
 The JSON has `id`, `url`, `status`, `answer`, `created_at`, `updated_at` and `session_url` with an API key; with a login session it has `id`, `url`, `session_url`, `building` and `answer`, plus `rejected_files` when a file was left off because it would exceed your storage quota.

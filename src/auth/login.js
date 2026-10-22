@@ -1,9 +1,11 @@
 import { spawn } from "node:child_process";
 import { platform } from "node:os";
-import { DefaultApiUrl, DefaultTimeoutMs } from "../constants.js";
+import { join } from "node:path";
+import { DefaultApiUrl, DefaultTimeoutMs, DeviceAuthorizeUrl } from "../constants.js";
 import { CliError } from "../runtime-error.js";
-import { WriteCredentials } from "./credentials.js";
+import { CredentialsPath, WriteCredentials } from "./credentials.js";
 import {
+  Clean,
   dim,
   info,
   success,
@@ -19,6 +21,10 @@ import {
 
 const _MIN_INTERVAL_MS = 1000;
 const _MAX_INTERVAL_MS = 10_000;
+// The API's codes: two groups of four from an alphabet without 0, O, 1, I and L.
+const _USER_CODE = /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/;
+// The API's device codes live 15 minutes; a longer expires_in is not waited for.
+const _MAX_EXPIRES_S = 900;
 
 async function _requestJson(url, { method = "GET", body, timeoutMs = DefaultTimeoutMs, userAgent } = {}) {
   const controller = new AbortController();
@@ -33,6 +39,8 @@ async function _requestJson(url, { method = "GET", body, timeoutMs = DefaultTime
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
+      // The API never redirects these calls; following one would take the device code elsewhere.
+      redirect: "error",
     });
     const text = await response.text();
     let payload = {};
@@ -60,14 +68,19 @@ async function _requestJson(url, { method = "GET", body, timeoutMs = DefaultTime
   }
 }
 
+// Only ever called with AuthorizeUrl's result: a fixed https origin and a validated code, so no character of it can
+// be read as an option or (on Windows) as a shell operator. Windows starts it through rundll32 by its full path,
+// never through cmd, which would also be looked up in the current directory first.
 function _openBrowser(url) {
   const target = String(url || "").trim();
-  if (!target) return;
+  if (!target.startsWith(`${DeviceAuthorizeUrl}?`)) return;
   const os = platform();
   try {
-    if (os === "darwin") spawn("open", [target], { detached: true, stdio: "ignore" }).unref();
-    else if (os === "win32") spawn("cmd", ["/c", "start", "", target], { detached: true, stdio: "ignore" }).unref();
-    else spawn("xdg-open", [target], { detached: true, stdio: "ignore" }).unref();
+    if (os === "darwin") spawn("/usr/bin/open", [target], { detached: true, stdio: "ignore" }).unref();
+    else if (os === "win32") {
+      const rundll32 = join(process.env.SystemRoot || "C:\\Windows", "System32", "rundll32.exe");
+      spawn(rundll32, ["url.dll,FileProtocolHandler", target], { detached: true, stdio: "ignore" }).unref();
+    } else spawn("xdg-open", [target], { detached: true, stdio: "ignore" }).unref();
   } catch {
     // User can open the URL manually.
   }
@@ -86,6 +99,14 @@ function _sleep(ms, signal) {
     };
     signal?.addEventListener("abort", onAbort, { once: true });
   });
+}
+
+export function AuthorizeUrl(userCode) {
+  return `${DeviceAuthorizeUrl}?user_code=${encodeURIComponent(userCode)}`;
+}
+
+function _expiresSeconds(expiresIn) {
+  return Math.min(Math.max(30, Number(expiresIn) || _MAX_EXPIRES_S), _MAX_EXPIRES_S);
 }
 
 export async function RunDeviceLogin({ userAgent, json = false, openBrowser = true } = {}) {
@@ -107,13 +128,11 @@ export async function RunDeviceLogin({ userAgent, json = false, openBrowser = tr
   const {
     device_code: deviceCode,
     user_code: userCode,
-    verification_uri: verificationUri,
-    verification_uri_complete: verificationUriComplete,
     interval = 5,
     expires_in: expiresIn = 900,
   } = started.payload || {};
 
-  if (!deviceCode || !userCode || !verificationUri) {
+  if (!deviceCode || typeof deviceCode !== "string" || typeof userCode !== "string" || !_USER_CODE.test(userCode)) {
     throw new CliError({
       code: "auth_error",
       message: "Device login response was incomplete.",
@@ -121,7 +140,8 @@ export async function RunDeviceLogin({ userAgent, json = false, openBrowser = tr
     });
   }
 
-  const authorizeUrl = verificationUriComplete || `${verificationUri}?user_code=${encodeURIComponent(userCode)}`;
+  // The approval page is the CLI's own constant, whatever verification_uri the API sent.
+  const authorizeUrl = AuthorizeUrl(userCode);
 
   if (json) {
     // The code and URL are the only way to finish the login, and the polling below blocks until it is done, so a
@@ -131,9 +151,9 @@ export async function RunDeviceLogin({ userAgent, json = false, openBrowser = tr
         {
           status: "authorization_pending",
           user_code: userCode,
-          verification_uri: verificationUri,
+          verification_uri: DeviceAuthorizeUrl,
           verification_uri_complete: authorizeUrl,
-          expires_in: Number(expiresIn) || 900,
+          expires_in: _expiresSeconds(expiresIn),
         },
         null,
         2,
@@ -153,7 +173,7 @@ export async function RunDeviceLogin({ userAgent, json = false, openBrowser = tr
     }
   }
 
-  const deadline = Date.now() + Math.max(30, Number(expiresIn) || 900) * 1000;
+  const deadline = Date.now() + _expiresSeconds(expiresIn) * 1000;
   let waitMs = Math.min(Math.max((Number(interval) || 5) * 1000, _MIN_INTERVAL_MS), _MAX_INTERVAL_MS);
   const spinner = json ? null : createSpinner("Waiting for authorization");
   spinner?.start();
@@ -217,9 +237,9 @@ export async function RunDeviceLogin({ userAgent, json = false, openBrowser = tr
       });
       spinner?.succeed("Signed in");
       if (!json) {
-        const email = credentials.user?.email || credentials.user?.name || "account";
+        const email = Clean(credentials.user?.email || credentials.user?.name || "account");
         println(success(`Logged in as ${bold(email)}`));
-        println(dim("Credentials saved to ~/.config/wisylink/credentials.json"));
+        println(dim(`Credentials saved to ${CredentialsPath()}`));
       }
       return credentials;
     }

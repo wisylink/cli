@@ -1,4 +1,5 @@
 import { readFile, stat } from "node:fs/promises";
+import { MaxUploadBytes } from "../constants.js";
 import { CliError } from "../runtime-error.js";
 import { NormalizeApiUrl, ParseTimeoutMs, ResolveFixedApiUrl } from "../validators.js";
 const _maxChunkBytes = 4 * 1024 * 1024;
@@ -73,6 +74,14 @@ async function _readUploadSource(filePath) {
     });
   }
 
+  if (fileStats.size > MaxUploadBytes) {
+    throw new CliError({
+      code: "usage_error",
+      message: `File is larger than ${MaxUploadBytes / 1024 / 1024} MB: ${safePath}`,
+      exitCode: 2,
+    });
+  }
+
   const buffer = await readFile(safePath);
   if (!buffer.length) {
     throw new CliError({
@@ -105,6 +114,8 @@ async function _requestJson({ apiKey, userAgent, timeoutMs, ...request }) {
       headers,
       body: request.body,
       signal: controller.signal,
+      // The API never redirects; following one would send the credential to whatever host it names.
+      redirect: "error",
     });
 
     const payload = await _readResponseJson(response);
