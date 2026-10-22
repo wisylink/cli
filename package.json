@@ -1,7 +1,7 @@
 {
   "name": "@wisylink/cli",
   "version": "0.3.1",
-  "description": "Official WisyLink coding-agent CLI — device login, chat, files, and links.",
+  "description": "WisyLink CLI: build and host websites, apps and tools with AI from your terminal — device login, chat, files and links.",
   "type": "module",
   "main": "./index.js",
   "exports": {
@@ -28,9 +28,15 @@
   "keywords": [
     "wisylink",
     "cli",
+    "ai",
+    "ai-website-builder",
+    "ai-app-builder",
+    "website-builder",
+    "website-generator",
+    "no-code",
+    "vibe-coding",
     "api",
-    "automation",
-    "ai"
+    "automation"
   ],
   "author": "WisyLink",
   "license": "MIT",
