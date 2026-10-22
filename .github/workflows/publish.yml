@@ -1,0 +1,40 @@
+# Publishes @wisylink/cli to npm with trusted publishing: npm accepts this workflow's GitHub OIDC identity (the
+# trusted publisher set on the package), so no npm token exists anywhere, and every release carries a provenance
+# attestation. Run it by hand on main after the version in package.json is bumped and pushed.
+name: publish
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@11
+      - run: npm test
+      - name: Refuse a version that is already on npm
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if npm view "@wisylink/cli@$version" version >/dev/null 2>&1; then
+            echo "@wisylink/cli@$version is already published; bump the version first." >&2
+            exit 1
+          fi
+      - run: npm publish --access public
