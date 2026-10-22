@@ -34,7 +34,7 @@ function _renderHelp() {
     "",
     "Auth:",
     "  login                 Sign in with browser device authorization",
-    "  logout                Clear saved credentials",
+    "  logout                End the session on the server and clear saved credentials",
     "  whoami                Show the signed-in account",
     "",
     "Agent:",

@@ -3,7 +3,7 @@ import { platform } from "node:os";
 import { join } from "node:path";
 import { DefaultApiUrl, DefaultTimeoutMs, DeviceAuthorizeUrl } from "../constants.js";
 import { CliError } from "../runtime-error.js";
-import { CredentialsPath, WriteCredentials } from "./credentials.js";
+import { CredentialsPath, PrepareCredentialsDir, WriteCredentials } from "./credentials.js";
 import {
   Clean,
   dim,
@@ -76,11 +76,15 @@ function _openBrowser(url) {
   if (!target.startsWith(`${DeviceAuthorizeUrl}?`)) return;
   const os = platform();
   try {
-    if (os === "darwin") spawn("/usr/bin/open", [target], { detached: true, stdio: "ignore" }).unref();
+    let child;
+    if (os === "darwin") child = spawn("/usr/bin/open", [target], { detached: true, stdio: "ignore" });
     else if (os === "win32") {
       const rundll32 = join(process.env.SystemRoot || "C:\\Windows", "System32", "rundll32.exe");
-      spawn(rundll32, ["url.dll,FileProtocolHandler", target], { detached: true, stdio: "ignore" }).unref();
-    } else spawn("xdg-open", [target], { detached: true, stdio: "ignore" }).unref();
+      child = spawn(rundll32, ["url.dll,FileProtocolHandler", target], { detached: true, stdio: "ignore" });
+    } else child = spawn("xdg-open", [target], { detached: true, stdio: "ignore" });
+    // No opener (a server over SSH, a container): the URL is on screen already.
+    child.on("error", () => {});
+    child.unref();
   } catch {
     // User can open the URL manually.
   }
@@ -110,6 +114,9 @@ function _expiresSeconds(expiresIn) {
 }
 
 export async function RunDeviceLogin({ userAgent, json = false, openBrowser = true } = {}) {
+  // The device code is single-use: a config directory that cannot take the token fails here, before the browser
+  // approval, not after it.
+  await PrepareCredentialsDir();
   const started = await _requestJson(`${DefaultApiUrl}/cli/device/code`, {
     method: "POST",
     body: {},
@@ -261,6 +268,7 @@ export async function RunDeviceLogin({ userAgent, json = false, openBrowser = tr
     }
     throw error;
   } finally {
+    spinner?.stop();
     process.removeListener("SIGINT", onSigint);
   }
 }

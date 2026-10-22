@@ -14,9 +14,9 @@ const _FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", 
 // the Unicode line and paragraph separators and the bidi controls are removed, so a reply cannot move the cursor,
 // clear the screen, retitle the terminal, write the clipboard (OSC 52) or reorder what the user reads. A one-line
 // field also folds newlines and tabs into a space, which keeps the report's line count true.
-const _UNSAFE_TEXT = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069]/g;
+const _UNSAFE_TEXT = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069]/g;
 // JSON.stringify escapes C0 but leaves these raw; escaped, a JSON consumer still gets the exact text.
-const _UNSAFE_JSON = /[\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069]/g;
+const _UNSAFE_JSON = /[\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069]/g;
 
 export function Clean(text, { multiline = false } = {}) {
   const value = String(text ?? "").replace(_UNSAFE_TEXT, "");
@@ -182,7 +182,7 @@ export function renderReport(report, { status } = {}) {
           ? green("completed")
           : status === "aborted"
             ? red("aborted")
-            : dim(status);
+            : dim(Clean(status));
     println(`${bold("Build")}  ${label}`);
   }
 

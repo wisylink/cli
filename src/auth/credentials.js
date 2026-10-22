@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { chmod, lstat, mkdir, open, readFile, rename, rm } from "node:fs/promises";
-import { dirname, isAbsolute, join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { CliError } from "../runtime-error.js";
 
 const _DIR_MODE = 0o700;
@@ -35,6 +35,17 @@ async function _assertPrivateDir(dir) {
     throw _credentialsError(`${dir} belongs to another user; remove it and run wisylink login again.`);
   }
   if (info.mode & 0o077) await chmod(dir, _DIR_MODE);
+}
+
+export async function PrepareCredentialsDir() {
+  const dir = _configDir();
+  try {
+    await mkdir(dir, { recursive: true, mode: _DIR_MODE });
+  } catch (error) {
+    throw _credentialsError(`Cannot create ${dir} (${error?.code || "error"}).`);
+  }
+  await _assertPrivateDir(dir);
+  return dir;
 }
 
 export async function ReadCredentials() {
@@ -77,9 +88,7 @@ export async function ReadCredentials() {
 // token is never in a file with wider permissions, never written through a symlink, and never half-written.
 export async function WriteCredentials({ token, user }) {
   const path = CredentialsPath();
-  const dir = dirname(path);
-  await mkdir(dir, { recursive: true, mode: _DIR_MODE });
-  await _assertPrivateDir(dir);
+  const dir = await PrepareCredentialsDir();
 
   const payload = {
     token: String(token || "").trim(),
@@ -88,18 +97,18 @@ export async function WriteCredentials({ token, user }) {
   };
 
   const temp = join(dir, `.credentials-${randomBytes(8).toString("hex")}.tmp`);
-  const handle = await open(temp, "wx", _FILE_MODE);
   try {
-    await handle.writeFile(`${JSON.stringify(payload, null, 2)}\n`);
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
-  try {
+    const handle = await open(temp, "wx", _FILE_MODE);
+    try {
+      await handle.writeFile(`${JSON.stringify(payload, null, 2)}\n`);
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
     await rename(temp, path);
   } catch (error) {
-    await rm(temp, { force: true });
-    throw error;
+    await rm(temp, { force: true }).catch(() => {});
+    throw _credentialsError(`Cannot save ${path} (${error?.code || "error"}).`);
   }
   return payload;
 }

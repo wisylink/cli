@@ -625,3 +625,21 @@ test("the API clients never follow a redirect", async () => {
   assert.equal(await run("links", "get", LINK_ID, "--api-key", "k", "--json"), 0);
   assert.deepEqual(seen, ["error", "error"]);
 });
+
+test("logout counts a session the API already ended as revoked", async () => {
+  on("POST", "/internal/sessions", () => _json({ error: "unauthorized" }, 401));
+  assert.equal(await run("logout", "--json"), 0);
+  assert.deepEqual(JSON.parse(stdout), { ok: true, session_revoked: true });
+});
+
+test("the live build report prints status, note and tasks without control sequences", async () => {
+  const { renderReport } = await import("../src/ui/tty.js");
+  await withTty(async () => {
+    renderReport(
+      { note: "n\u001b]52;c;eA==\u0007", tasks: [{ text: "t\u001b[2J\nx", done: true }, { text: "\u202Eu" }] },
+      { status: "weird\u001b]0;x\u0007" },
+    );
+  });
+  assert.doesNotMatch(stdout.replace(/\u001b\[[0-9;]*m/g, ""), /[\u001b\u0007\u202E]/);
+  assert.match(stdout, /t\[2J x/);
+});

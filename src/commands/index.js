@@ -356,13 +356,15 @@ export async function ExecuteLogin(command, version) {
 // another disk) stops working too. A session the API already ended (401) counts as revoked.
 export async function ExecuteLogout(command, version) {
   let credentials = null;
-  try {
-    credentials = await ReadCredentials();
-  } catch {
-    // an unreadable file is still removed below
-  }
   let revoked = null;
   let reason = "";
+  try {
+    credentials = await ReadCredentials();
+  } catch (error) {
+    // an unreadable file is still removed below, but its session could not be ended
+    revoked = false;
+    reason = Clean(error?.message || "unreadable credentials");
+  }
   if (credentials?.token) {
     try {
       const client = CreateSessionClient({
