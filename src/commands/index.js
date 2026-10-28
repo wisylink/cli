@@ -429,7 +429,7 @@ export async function ExecuteWhoami(command, version) {
 }
 
 // The same input rules as the Node client, applied before any request and whatever the auth mode: a login
-// session talks to /internal/chat, which would otherwise accept an 11th file id by silently dropping it.
+// session's chat endpoint would otherwise accept an 11th file id by silently dropping it.
 function _validateChatArgs(args) {
   return {
     message: args.message === undefined ? undefined : NormalizeMessage(args.message),

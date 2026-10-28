@@ -13,7 +13,7 @@ export const MaxUploadBytes = 25 * 1024 * 1024;
 export const MaxFileIdsPerRequest = 10;
 export const MaxListLimit = 100;
 export const DefaultListLimit = 20;
-// A login session lists at most 25 links per page (GET /internal/links); the API-key plane allows MaxListLimit.
+// A login session lists at most 25 links per page; the API-key plane allows MaxListLimit.
 export const MaxSessionListLimit = 25;
 
 // File ids are 24 lowercase hex characters; the API reads them case-insensitively.
